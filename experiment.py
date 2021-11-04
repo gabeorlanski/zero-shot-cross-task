@@ -38,7 +38,7 @@ def run(args):
     logger.info(f"Starting experiment with name '{args.run_name}'")
 
     logger.info(f"Loading task {args.task} with model {args.model_name}")
-    dataset = load_dataset(args.task, download_config=args.subset)
+    dataset = load_dataset(args.task + f"{'/' + args.subset if args.subset else ''}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     # Prompt it
     from promptsource.templates import DatasetTemplates
@@ -98,10 +98,10 @@ def run(args):
             pred_file.write(f"Prediction: {pred}\n")
             pred_file.write(f"Gold: {gold[i]}\n")
             pred_file.write("\n\n\n")
-            instances_seen+=1
+            instances_seen += 1
         pbar.set_description(f"Acc: {correct / instances_seen * 100:.3f}", refresh=True)
     pbar.close()
-    logger.info(f"Final score for {args.task}: {correct / instances_seen * 100}")
+    logger.info(f"Final score for {args.task}: {correct / instances_seen * 100:.3f}")
     pred_file.close()
     logger.info("Finished applying the prompt.")
 
