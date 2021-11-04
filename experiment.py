@@ -48,9 +48,10 @@ def run(args):
         prompt_task = args.task
         prompt_name = args.task_prompt
     # Get all the AG News prompts
-    ag_news_prompts = DatasetTemplates(prompt_task)
+    task_prompt_templates = DatasetTemplates(prompt_task)
+    logger.info(f"Template Names: {task_prompt_templates.all_template_names}")
     # Select a prompt by name
-    prompt = ag_news_prompts[prompt_name]
+    prompt = task_prompt_templates[prompt_name]
 
     prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
     result = prompt_mapper("craigslist_bargains", dataset)
