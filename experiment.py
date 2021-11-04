@@ -64,10 +64,10 @@ def run(args):
         output = {f'target_{k}': v for k, v in output.items()}
         return {**output, **tokenizer(b, max_length=1024, truncation=True)}
 
-    tokenized = result['validation'].map(
+    tokenized = result[args.split].map(
         tok,
         input_columns=["prompt", "output"],
-        remove_columns=result['validation'].column_names
+        remove_columns=result[args.split].column_names
     )
     collator = DataCollatorWithPadding(tokenizer=tokenizer, pad_to_multiple_of=8, max_length=1024,
                                        padding='longest')
