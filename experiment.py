@@ -44,12 +44,17 @@ def run(args):
 
     # Prompt it
     from promptsource.templates import DatasetTemplates
+    try:
+        prompt_task, prompt_name = args.task_prompt.split("|")
+    except ValueError:
+        prompt_task = args.task
+        prompt_name = args.task_prompt
     # Get all the AG News prompts
-    ag_news_prompts = DatasetTemplates('craigslist_bargains')
+    ag_news_prompts = DatasetTemplates(prompt_task)
     # Select a prompt by name
-    prompt = ag_news_prompts["best deal"]
+    prompt = ag_news_prompts[prompt_name]
 
-    prompt_mapper = PromptMapper.by_name("default")("best deal", prompt, 4, batch_size=1)
+    prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
     result = prompt_mapper("craigslist_bargains", dataset)
 
     def tok(b, v):
@@ -79,9 +84,11 @@ def run(args):
             attention_mask=b['attention_mask'].to(torch.device(0)),
             max_length=256
         )
+        source = tokenizer.batch_decode(b['input_ids'], skip_special_tokens=True)
         preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
         gold = tokenizer.batch_decode(b['target_input_ids'], skip_special_tokens=True)
         for i, pred in enumerate(preds):
+            pred_file.write(f"Source:{source[i]}\n")
             pred_file.write(f"Prediction: {pred}\n")
             pred_file.write(f"Gold: {gold[i]}\n")
             pred_file.write("\n\n\n")
@@ -93,6 +100,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("run_name", type=str, help="Name for the run.")
     parser.add_argument("task", type=str, help="Name of the task")
+    parser.add_argument("task_prompt", type=str, help="Name of the Task|Name of Prompt")
     parser.add_argument(
         "-f",
         "--force",
