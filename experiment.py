@@ -38,10 +38,8 @@ def run(args):
     logger.info(f"Starting experiment with name '{args.run_name}'")
 
     logger.info(f"Loading task {args.task} with model {args.model_name}")
-    dataset = load_dataset(args.task)
+    dataset = load_dataset(args.task,download_config=args.subset,split=args.split)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
-
     # Prompt it
     from promptsource.templates import DatasetTemplates
     try:
@@ -56,6 +54,9 @@ def run(args):
 
     prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
     result = prompt_mapper("craigslist_bargains", dataset)
+
+    model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
+
 
     def tok(b, v):
         output = tokenizer(v, max_length=256, truncation=True, padding="max_length")
@@ -100,6 +101,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("run_name", type=str, help="Name for the run.")
     parser.add_argument("task", type=str, help="Name of the task")
+    parser.add_argument("split", type=str, help="split name")
     parser.add_argument("task_prompt", type=str, help="Name of the Task|Name of Prompt")
     parser.add_argument(
         "-f",
@@ -114,5 +116,12 @@ if __name__ == '__main__':
         type=str,
         default="t5-base",
         help="Model to use",
+    )
+
+    parser.add_argument(
+        "--subset",
+        type=str,
+        default=None,
+        help="Subset of the dataset to use",
     )
     run(parser.parse_args())
