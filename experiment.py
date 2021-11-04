@@ -1,7 +1,7 @@
 import argparse
 import logging
 from transformers import T5ForConditionalGeneration, AutoTokenizer, DataCollatorWithPadding
-from datasets import load_dataset
+from datasets import load_dataset, load_metric
 from pathlib import Path
 import shutil
 import torch
@@ -47,14 +47,14 @@ def run(args):
     except ValueError:
         prompt_task = args.task
         prompt_name = args.task_prompt
-    # Get all the AG News prompts
+
     task_prompt_templates = DatasetTemplates(prompt_task)
     logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
     # Select a prompt by name
     prompt = task_prompt_templates[prompt_name]
 
     prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
-    result = prompt_mapper("craigslist_bargains", dataset)
+    result = prompt_mapper(args.task, dataset)
 
     model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
 
@@ -79,7 +79,11 @@ def run(args):
 
     logger.info(f"Starting Generation")
     pred_file = out_path.joinpath('preds.txt').open('w', encoding="utf-8")
-    for b in tqdm(data_loader):
+
+    b_covered = 0
+    correct = 0
+    pbar = tqdm(data_loader)
+    for b in pbar:
         generated = model.generate(
             input_ids=b['input_ids'].to(torch.device(0)),
             attention_mask=b['attention_mask'].to(torch.device(0)),
@@ -89,10 +93,15 @@ def run(args):
         preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
         gold = tokenizer.batch_decode(b['target_input_ids'], skip_special_tokens=True)
         for i, pred in enumerate(preds):
+            correct += pred == gold[i]
             pred_file.write(f"Source:{source[i]}\n")
             pred_file.write(f"Prediction: {pred}\n")
             pred_file.write(f"Gold: {gold[i]}\n")
             pred_file.write("\n\n\n")
+        b_covered += 1
+        pbar.set_description(f"Acc: {correct / b_covered * 100:.3f}", refresh=True)
+    pbar.close()
+    logger.info(f"Final score for {args.task}: {correct / b_covered * 100}")
     pred_file.close()
     logger.info("Finished applying the prompt.")
 
