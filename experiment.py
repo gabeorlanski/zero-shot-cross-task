@@ -38,7 +38,10 @@ def run(args):
     logger.info(f"Starting experiment with name '{args.run_name}'")
 
     logger.info(f"Loading task {args.task} with model {args.model_name}")
-    dataset = load_dataset(args.task + f"{'/' + args.subset if args.subset else ''}")
+    if args.subset:
+        dataset = load_dataset(args.task, args.subset)
+    else:
+        dataset = load_dataset(args.task)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     # Prompt it
     from promptsource.templates import DatasetTemplates
