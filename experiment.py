@@ -49,7 +49,7 @@ def run(args):
         prompt_name = args.task_prompt
     # Get all the AG News prompts
     task_prompt_templates = DatasetTemplates(prompt_task)
-    logger.info(f"Template Names: {task_prompt_templates.all_template_names}")
+    logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
     # Select a prompt by name
     prompt = task_prompt_templates[prompt_name]
 
