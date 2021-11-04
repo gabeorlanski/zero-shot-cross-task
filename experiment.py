@@ -38,7 +38,7 @@ def run(args):
     logger.info(f"Starting experiment with name '{args.run_name}'")
 
     logger.info(f"Loading task {args.task} with model {args.model_name}")
-    dataset = load_dataset(args.task,download_config=args.subset,split=args.split)
+    dataset = load_dataset(args.task, download_config=args.subset)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     # Prompt it
     from promptsource.templates import DatasetTemplates
@@ -57,7 +57,6 @@ def run(args):
     result = prompt_mapper("craigslist_bargains", dataset)
 
     model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
-
 
     def tok(b, v):
         output = tokenizer(v, max_length=256, truncation=True, padding="max_length")
