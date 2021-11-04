@@ -40,15 +40,17 @@ def run(args):
     logger.info(f"Loading task {args.task} with model {args.model_name}")
     if args.subset:
         dataset = load_dataset(args.task, args.subset)
+        task = f"{args.task}/{args.subset}"
     else:
         dataset = load_dataset(args.task)
+        task = args.task
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     # Prompt it
     from promptsource.templates import DatasetTemplates
     try:
         prompt_task, prompt_name = args.task_prompt.split("|")
     except ValueError:
-        prompt_task = args.task
+        prompt_task = task
         prompt_name = args.task_prompt
 
     task_prompt_templates = DatasetTemplates(prompt_task)
