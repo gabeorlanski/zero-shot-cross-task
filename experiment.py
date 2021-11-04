@@ -80,7 +80,7 @@ def run(args):
     logger.info(f"Starting Generation")
     pred_file = out_path.joinpath('preds.txt').open('w', encoding="utf-8")
 
-    b_covered = 0
+    instances_seen = 0
     correct = 0
     pbar = tqdm(data_loader)
     for b in pbar:
@@ -98,10 +98,10 @@ def run(args):
             pred_file.write(f"Prediction: {pred}\n")
             pred_file.write(f"Gold: {gold[i]}\n")
             pred_file.write("\n\n\n")
-        b_covered += 1
-        pbar.set_description(f"Acc: {correct / b_covered * 100:.3f}", refresh=True)
+            instances_seen+=1
+        pbar.set_description(f"Acc: {correct / instances_seen * 100:.3f}", refresh=True)
     pbar.close()
-    logger.info(f"Final score for {args.task}: {correct / b_covered * 100}")
+    logger.info(f"Final score for {args.task}: {correct / instances_seen * 100}")
     pred_file.close()
     logger.info("Finished applying the prompt.")
 
