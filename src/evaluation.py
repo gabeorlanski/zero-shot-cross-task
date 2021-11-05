@@ -91,6 +91,7 @@ def generate(
     return pred_path
 
 
+# TODO(gabeorlanski): Remove expected total.
 def evaluate(task, prediction_path, metrics, out_path, expected_total):
     # Want to always have accuracy, so add it to the metrics if it is not
     # already present.

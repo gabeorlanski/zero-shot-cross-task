@@ -45,13 +45,6 @@ def prepare_environment(
     out_path = Path("results", experiment_name.replace(":", "-"))
     if not out_path.exists():
         out_path.mkdir(parents=True)
-    else:
-        if not force:
-            raise ValueError(f"'{out_path}' exists")
-
-        shutil.rmtree(out_path)
-        out_path.mkdir(parents=True)
-
     # Create the child dir for the results path
     results_path = out_path.joinpath(prompt_name)
     if not results_path.exists():
@@ -60,7 +53,7 @@ def prepare_environment(
         if not force:
             raise ValueError(f"'{results_path}' exists")
 
-        shutil.rmtree(out_path)
+        shutil.rmtree(results_path)
         results_path.mkdir(parents=True)
 
     prepare_global_logging(results_path.resolve().absolute(), log_name="experiment")

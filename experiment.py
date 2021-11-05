@@ -130,7 +130,7 @@ def run(args):
         args.task,
         result_file,
         metrics=prompt.metadata.metrics or ["Accuracy"],
-        out_path=out_path,
+        out_path=results_path,
         expected_total=len(tokenized['labels'])
     )
 
