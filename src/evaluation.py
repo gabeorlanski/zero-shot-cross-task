@@ -1,7 +1,8 @@
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Dict
 
+import numpy as np
 from tqdm import tqdm
 import torch
 from t5.data.glue_utils import get_glue_metric, get_super_glue_metric
@@ -54,18 +55,11 @@ def evaluate(
 
     # Create a metric tracker for keeping track of metrics we use.
     metric_tracker = Counter()
+    description = ""
+    for name, value in metric_tracker.items():
+        description += f"{name}: {0.0:.3f} "
 
-    def metric_str(total, metric_dict):
-        _o = ""
-        for _name, _v in metric_dict.items():
-            # Do not write oracle b/c it
-            if total > 0:
-                _o += f"{_name}: {value / total:.3f} "
-            else:
-                _o += f"{_name}: {0.0:.3f} "
-        return _o
-
-    data_iterator = tqdm(data_loader, desc=metric_str(0, metric_tracker))
+    data_iterator = tqdm(data_loader, desc=description)
     for batch in data_iterator:
         logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
         generated = model.generate(
@@ -132,9 +126,11 @@ def evaluate(
                 }) + '\n'
             )
         batches_seen += 1
-
+        description = ""
+        for name, value in metric_tracker.items():
+            description += f"{name}: {value / batches_seen:.3f} "
         data_iterator.set_description(
-            metric_str(batches_seen, metric_tracker),
+            description,
             refresh=True
         )
     data_iterator.close()
@@ -156,5 +152,33 @@ def evaluate(
     logger.info(f"Saving metrics to '{metrics_file}'")
     with metrics_file.open('w', encoding='utf-8') as fp:
         fp.write(json.dumps(final_metrics, indent=True))
+
+    # Sanity check
+    logger.info("Doing sanity check.")
+    targets = []
+    predictions = []
+    m_trackers = defaultdict(list)
+    pred_dicts = map(lambda l: json.loads(l), pred_path.read_text('utf-8').splitlines(False))
+    for line in pred_dicts:
+        targets.append(line['target'])
+        predictions.append(line['prediction'][0])
+
+        targets_mul = [line['target']] * len(line['prediction'])
+        for m in metrics:
+            oracle = {}
+            for x, y in zip(targets_mul, line['prediction']):
+                for k, v in METRICS_DICT[m]([x], [y]).items():
+                    oracle[k] = max(oracle.get(k, -1), v)
+            for k, v in oracle.items():
+                m_trackers[k].append(v)
+
+    logger.info("Sanity Metrics:")
+    for m in metrics:
+        for k, v in METRICS_DICT[m](targets, predictions).items():
+            met_name = f"{k}:"
+            logger.info(f"{met_name:>20} {v:.3f}")
+
+            met_name = f"oracle_{k}:"
+            logger.info(f"{met_name:>20} {np.mean(m_trackers[k]):.3f}")
 
     return pred_path
