@@ -55,9 +55,9 @@ def evaluate(
     # Create a metric tracker for keeping track of metrics we use.
     metric_tracker = Counter()
 
-    def metric_str(total):
+    def metric_str(total, metric_dict):
         _o = ""
-        for _name, _v in metric_tracker.items():
+        for _name, _v in metric_dict.items():
             # Do not write oracle b/c it
             if total > 0:
                 _o += f"{_name}: {value / total:.3f} "
@@ -65,7 +65,7 @@ def evaluate(
                 _o += f"{_name}: {0.0:.3f} "
         return _o
 
-    data_iterator = tqdm(data_loader, desc=metric_str(0))
+    data_iterator = tqdm(data_loader, desc=metric_str(0, metric_tracker))
     for batch in data_iterator:
         logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
         generated = model.generate(
@@ -113,6 +113,11 @@ def evaluate(
                     batch_metrics[f"oracle_{metric}"] = max(
                         value, batch_metrics.get(f"oracle_{metric}", -1)
                     )
+            logger.debug(f"Metrics for batch {batches_seen}:")
+            for k, v in batch_metrics.items():
+                # nice formatting, has no other effect.
+                met_name = f"{k}:"
+                logger.debug(f"{met_name:>20} {v:.3f}")
 
             for k, v in batch_metrics.items():
                 metric_tracker[k] += v
@@ -129,7 +134,7 @@ def evaluate(
         batches_seen += 1
 
         data_iterator.set_description(
-            metric_str(batches_seen),
+            metric_str(batches_seen, metric_tracker),
             refresh=True
         )
     data_iterator.close()
@@ -141,7 +146,7 @@ def evaluate(
 
         # nice formatting, has no other effect.
         met_name = f"{k}:"
-        logger.info(f"{met_name:>20} {v / batches_seen:.3f}")
+        logger.info(f"{met_name:>20} {final_metrics[k]:.3f}")
 
     pred_file.close()
 
