@@ -18,6 +18,10 @@ from src.common import prepare_environment
 from src.prompt_map import PromptMapper
 from src.evaluation import evaluate
 
+import re
+
+FILE_NAME_CLEANER = re.compile(r'[_\.\- ]')
+
 
 def run(args):
     """
@@ -37,15 +41,19 @@ def run(args):
         prompt_task = None
         prompt_name = args.task_prompt
 
-    experiment_name = f"{args.task.replace('/', '_')}.{args.split}" \
-                      f"{'.' + args.subset if args.subset else ''}"
+    # Cleaning the experiment name to make it savable and readable (somewhat)
+    experiment_name = f"{FILE_NAME_CLEANER.sub('_', args.task).replace('/', '_')}" \
+                      f"{'.' + FILE_NAME_CLEANER.sub('_', args.subset) if args.subset else ''}"
+    prompt_file_name = f"{FILE_NAME_CLEANER.sub('_', args.split)}"
     if prompt_task is not None:
-        experiment_name += f".{prompt_task.replace('/', '_')}"
+        prompt_file_name += f":{FILE_NAME_CLEANER.sub('_', prompt_task).replace('/', '_')}" \
+                            f".{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
+    else:
+        prompt_file_name += f":{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
 
-    experiment_name += f".{prompt_name.replace(' ', '_').replace('/', '_')}"
-
-    out_path, logger = prepare_environment(
+    out_path, results_path, logger = prepare_environment(
         experiment_name,
+        prompt_file_name,
         args.force,
         seed=seed,
         numpy_seed=numpy_seed,
@@ -83,7 +91,7 @@ def run(args):
         tok,
         input_columns=["prompt", "output"],
         remove_columns=result[args.split].column_names
-    ).sort('input_len',reverse=True)
+    ).sort('input_len', reverse=True)
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
         pad_to_multiple_of=4,
@@ -100,7 +108,7 @@ def run(args):
 
     result_file = evaluate(
         task=args.task,
-        out_path=out_path,
+        out_path=results_path,
         data_loader=data_loader,
         model_name=args.model_name,
         tokenizer=tokenizer,
