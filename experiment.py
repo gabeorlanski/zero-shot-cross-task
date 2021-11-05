@@ -6,13 +6,16 @@ from pathlib import Path
 import shutil
 import torch
 
+# Prompt it
+from promptsource.templates import DatasetTemplates
 from tqdm import tqdm
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from src.common import prepare_global_logging
+from src.common import prepare_environment
 from src.prompt_map import PromptMapper
+from src.evaluation import evaluate
 
 
 def run(args):
@@ -23,35 +26,42 @@ def run(args):
         args: CLI Args
     """
 
-    # Setup logging etc
-    out_path = Path("results", args.run_name)
-    if not out_path.exists():
-        out_path.mkdir(parents=True)
-    else:
-        if not args.force:
-            raise ValueError(f"'{out_path}' exists")
-
-        shutil.rmtree(out_path)
-        out_path.mkdir(parents=True)
-    prepare_global_logging(out_path.resolve().absolute(), log_name="experiment")
-    logger = logging.getLogger("experiment")
-    logger.info(f"Starting experiment with name '{args.run_name}'")
-
-    logger.info(f"Loading task {args.task} with model {args.model_name}")
-    if args.subset:
-        dataset = load_dataset(args.task, args.subset)
-        task = f"{args.task}/{args.subset}"
-    else:
-        dataset = load_dataset(args.task)
-        task = args.task
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    # Prompt it
-    from promptsource.templates import DatasetTemplates
+    # Setup the seeds and logging
+    seed = 1966
+    numpy_seed = 1991
+    torch_seed = 1999
     try:
         prompt_task, prompt_name = args.task_prompt.split("|")
     except ValueError:
-        prompt_task = task
+        prompt_task = None
         prompt_name = args.task_prompt
+
+    experiment_name = f"{args.task.replace('/', '_')}.{args.split}" \
+                      f"{'.' + args.subset if args.subset else ''}"
+    if prompt_task is not None:
+        experiment_name += f".{prompt_task.replace('/', '_')}"
+
+    experiment_name += f".{prompt_name.replace(' ', '_').replace('/', '_')}"
+
+    out_path, logger = prepare_environment(
+        experiment_name,
+        args.force,
+        seed=seed,
+        numpy_seed=numpy_seed,
+        torch_seed=torch_seed
+    )
+    logger.info(f"Starting experiment with name '{experiment_name}")
+    logger.info(f"Loading task {args.task} with model {args.model_name}")
+
+    # Load the correct dataset for this task.
+    if args.subset:
+        dataset = load_dataset(args.task, args.subset)
+        prompt_task = f"{args.task}/{args.subset}"
+    else:
+        dataset = load_dataset(args.task)
+        prompt_task = args.task
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
     task_prompt_templates = DatasetTemplates(prompt_task)
     logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
@@ -60,11 +70,10 @@ def run(args):
 
     prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
     result = prompt_mapper(args.task, dataset)
-
     model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
 
     def tok(b, v):
-        output = tokenizer(v, max_length=256, truncation=True, padding="max_length")
+        output = tokenizer(v, max_length=256, truncation=True)
         output = {f'target_{k}': v for k, v in output.items()}
         return {**output, **tokenizer(b, max_length=1024, truncation=True)}
 
@@ -79,41 +88,22 @@ def run(args):
     data_loader = torch.utils.data.DataLoader(
         tokenized,
         batch_size=16,
-        collate_fn=collator
+        collate_fn=collator,
+        shuffle=False
     )
 
-    logger.info(f"Starting Generation")
-    pred_file = out_path.joinpath('preds.txt').open('w', encoding="utf-8")
-
-    instances_seen = 0
-    correct = 0
-    pbar = tqdm(data_loader)
-    for b in pbar:
-        generated = model.generate(
-            input_ids=b['input_ids'].to(torch.device(0)),
-            attention_mask=b['attention_mask'].to(torch.device(0)),
-            max_length=256
-        )
-        source = tokenizer.batch_decode(b['input_ids'], skip_special_tokens=True)
-        preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
-        gold = tokenizer.batch_decode(b['target_input_ids'], skip_special_tokens=True)
-        for i, pred in enumerate(preds):
-            correct += pred == gold[i]
-            pred_file.write(f"Source:{source[i]}\n")
-            pred_file.write(f"Prediction: {pred}\n")
-            pred_file.write(f"Gold: {gold[i]}\n")
-            pred_file.write("\n\n\n")
-            instances_seen += 1
-        pbar.set_description(f"Acc: {correct / instances_seen * 100:.3f}", refresh=True)
-    pbar.close()
-    logger.info(f"Final score for {args.task}: {correct / instances_seen * 100:.3f}")
-    pred_file.close()
-    logger.info("Finished applying the prompt.")
+    result_file = evaluate(
+        task=args.task,
+        out_path=out_path,
+        data_loader=data_loader,
+        model=model,
+        tokenizer=tokenizer,
+        metrics=prompt.metadata.metrics
+    )
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("run_name", type=str, help="Name for the run.")
     parser.add_argument("task", type=str, help="Name of the task")
     parser.add_argument("split", type=str, help="split name")
     parser.add_argument("task_prompt", type=str, help="Name of the Task|Name of Prompt")
