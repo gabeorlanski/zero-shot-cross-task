@@ -32,21 +32,14 @@ METRICS_DICT = {
 }
 
 
-def evaluate(
-        task,
+def generate(
         out_path,
         data_loader,
         model_name,
         tokenizer,
-        metrics,
         max_gen_len,
         generator_kwargs: Dict = None
 ):
-    # Want to always have accuracy, so add it to the metrics if it is not
-    # already present.
-    if "Accuracy" not in metrics:
-        metrics.append("Accuracy")
-
     model = T5ForConditionalGeneration.from_pretrained(model_name).to(torch.device(0))
     logger.info(f"Starting Generation")
     pred_path = out_path.joinpath('predictions.jsonl')
@@ -71,7 +64,6 @@ def evaluate(
         # multiple beams.
         generated = generated.reshape(
             (len(gold), generator_kwargs.get('num_return_sequences', 1), -1))
-        logger.debug(f"Calculating metrics {metrics}")
 
         # Pre initialize the preds nested array here because it saves time
         # later. Faster then appending.
@@ -85,7 +77,7 @@ def evaluate(
             for i, seq in enumerate(decoded_beams):
                 preds[i][beam_num] = seq
 
-        logger.debug("Saving JSON lines")
+        logger.debug("Saving JSON lines for batch")
         for i, pred in enumerate(preds):
             pred_file.write(
                 json.dumps({
@@ -94,19 +86,22 @@ def evaluate(
                     "input"     : source[i]
                 }) + '\n'
             )
-
     data_iterator.close()
-
     pred_file.close()
+    return pred_path
 
-    logger.info("Finished generating the dataset with the prompt.")
 
-    # Sanity check
-    logger.info("Calculating Metrics.")
+def evaluate(task, prediction_path, metrics, out_path, expected_total):
+    # Want to always have accuracy, so add it to the metrics if it is not
+    # already present.
+    if "Accuracy" not in metrics:
+        metrics.append("Accuracy")
+    logger.info(f"Evaluating predictions for {task}.")
     targets = []
     predictions = []
     m_trackers = defaultdict(list)
-    pred_dicts = map(lambda l: json.loads(l), pred_path.read_text('utf-8').splitlines(False))
+    pred_dicts = map(lambda l: json.loads(l), prediction_path.read_text('utf-8').splitlines(False))
+    pbar = tqdm(total=expected_total, desc="Evaluating")
     for line in pred_dicts:
         targets.append(line['target'])
         predictions.append(line['prediction'][0])
@@ -119,7 +114,10 @@ def evaluate(
                     oracle[k] = max(oracle.get(k, -1), v)
             for k, v in oracle.items():
                 m_trackers[k].append(v)
+        pbar.update()
+    pbar.close()
 
+    assert len(targets) == expected_total
     logger.info("Final Metrics:")
     final_metrics = {}
     for m in metrics:
@@ -137,4 +135,4 @@ def evaluate(
     with metrics_file.open('w', encoding='utf-8') as fp:
         fp.write(json.dumps(final_metrics, indent=True))
 
-    return pred_path
+    return metrics_file

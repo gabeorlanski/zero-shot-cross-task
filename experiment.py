@@ -16,7 +16,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.common import prepare_environment
 from src.prompt_map import PromptMapper
-from src.evaluation import evaluate
+from src.evaluation import generate, evaluate
 
 import re
 
@@ -113,18 +113,25 @@ def run(args):
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
 
-    result_file = evaluate(
-        task=args.task,
+    result_file = generate(
         out_path=results_path,
         data_loader=data_loader,
         model_name=args.model_name,
         tokenizer=tokenizer,
-        metrics=prompt.metadata.metrics or ["Accuracy"],
         max_gen_len=max(tokenized['labels_len']),
         generator_kwargs={
             "num_beams"           : 4,
             "num_return_sequences": 4
         }
+    )
+    logger.info("Finished generating the dataset with the prompt.")
+    logger.info(f"Beginning evaluation of the predictions.")
+    evaluate(
+        args.task,
+        result_file,
+        metrics=prompt.metadata.metrics or ["Accuracy"],
+        out_path=out_path,
+        expected_total=len(tokenized['labels'])
     )
 
 
