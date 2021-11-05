@@ -98,7 +98,7 @@ def run(args):
         data_loader=data_loader,
         model=model,
         tokenizer=tokenizer,
-        metrics=prompt.metadata.metrics
+        metrics=prompt.metadata.metrics or ["Accuracy"]
     )
 
 
