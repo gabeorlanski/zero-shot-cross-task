@@ -73,7 +73,7 @@ def run(args):
     model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
 
     def tok(b, v):
-        output = tokenizer(v, max_length=256, truncation=True)
+        output = tokenizer(v, max_length=128, truncation=True, padding="max_length")
         output = {f'target_{k}': v for k, v in output.items()}
         return {**output, **tokenizer(b, max_length=1024, truncation=True)}
 
