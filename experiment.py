@@ -106,7 +106,7 @@ def run(args):
 
     data_loader = torch.utils.data.DataLoader(
         tokenized,
-        batch_size=16,
+        batch_size=args.batch_size,
         collate_fn=collator,
         shuffle=False
     )
@@ -118,7 +118,7 @@ def run(args):
         data_loader=data_loader,
         model_name=args.model_name,
         tokenizer=tokenizer,
-        max_gen_len=max(tokenized['labels_len'])+5,
+        max_gen_len=max(tokenized['labels_len']) + 5,
         generator_kwargs={
             "num_beams"           : 4,
             "num_return_sequences": 4
@@ -160,5 +160,13 @@ if __name__ == '__main__':
         type=str,
         default=None,
         help="Subset of the dataset to use",
+    )
+
+    parser.add_argument(
+        "--batch-size",
+        "-b",
+        type=int,
+        default=16,
+        help="batch size",
     )
     run(parser.parse_args())
