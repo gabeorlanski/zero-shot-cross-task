@@ -47,7 +47,7 @@ def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
             early_stopping=True,
         )
 
-        source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+        # source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
         preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
         gold = tokenizer.batch_decode(batch['target_input_ids'], skip_special_tokens=True)
 
@@ -65,7 +65,7 @@ def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
                 json.dumps({
                     "prediction": pred,
                     "target"    : gold[i],
-                    "input"     : source[i]
+                    # "input"     : source[i]
                 }) + '\n'
             )
             instances_seen += 1
