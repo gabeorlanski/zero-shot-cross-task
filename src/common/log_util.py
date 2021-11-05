@@ -56,24 +56,21 @@ def prepare_global_logging(serialization_dir: Union[str, PathLike],
     stderr_handler.setFormatter(error_format)
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    if os.environ.get("ALLENNLP_DEBUG"):
-        stdout_handler.setFormatter(verbose_format)
-        LEVEL = logging.DEBUG
-    else:
-        stdout_handler.setFormatter(normal_format)
-        level_name = os.environ.get("ALLENNLP_LOG_LEVEL", "INFO")
-        LEVEL = logging._nameToLevel.get(level_name, logging.INFO)
+
+    stdout_handler.setFormatter(normal_format)
+    level_name = "INFO"
+    LEVEL = logging._nameToLevel.get(level_name, logging.INFO)
 
     # Remove the already set handlers in root logger.
     # Not doing this will result in duplicate log messages
     root_logger.handlers.clear()
 
-    file_handler.setLevel(LEVEL)
+    file_handler.setLevel(logging.DEBUG)
     stdout_handler.setLevel(LEVEL)
     stdout_handler.addFilter(
         ErrorFilter())  # Make sure errors only go to stderr
     stderr_handler.setLevel(logging.ERROR)
-    root_logger.setLevel(LEVEL)
+    root_logger.setLevel(logging.DEBUG)
 
     # put all the handlers on the root logger
     root_logger.addHandler(file_handler)

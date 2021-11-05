@@ -1,6 +1,7 @@
 import argparse
 import logging
-from transformers import T5ForConditionalGeneration, AutoTokenizer, DataCollatorWithPadding
+from transformers import T5ForConditionalGeneration, AutoTokenizer, DataCollatorWithPadding, \
+    DataCollatorForSeq2Seq
 from datasets import load_dataset, load_metric
 from pathlib import Path
 import shutil
@@ -70,21 +71,26 @@ def run(args):
 
     prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
     result = prompt_mapper(args.task, dataset)
-    model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(torch.device(0))
 
     def tok(b, v):
-        output = tokenizer(v, max_length=128, truncation=True, padding="max_length")
-        output = {f'target_{k}': v for k, v in output.items()}
-        return {**output, **tokenizer(b, max_length=1024, truncation=True)}
+        output = tokenizer(v, max_length=128, truncation=True)
+        # output = {f'target_{k}': v for k, v in output.items()}
+        out = {"labels": output['input_ids'], **tokenizer(b, max_length=1024, truncation=True)}
+        out["input_len"] = len(out['input_ids'])
+        return out
 
     tokenized = result[args.split].map(
         tok,
         input_columns=["prompt", "output"],
         remove_columns=result[args.split].column_names
+    ).sort('input_len',reverse=True)
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=4,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
     )
-    collator = DataCollatorWithPadding(tokenizer=tokenizer, pad_to_multiple_of=8, max_length=1024,
-                                       padding='longest')
-
     data_loader = torch.utils.data.DataLoader(
         tokenized,
         batch_size=16,
@@ -96,7 +102,7 @@ def run(args):
         task=args.task,
         out_path=out_path,
         data_loader=data_loader,
-        model=model,
+        model_name=args.model_name,
         tokenizer=tokenizer,
         metrics=prompt.metadata.metrics or ["Accuracy"]
     )

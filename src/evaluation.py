@@ -6,6 +6,7 @@ import torch
 from t5.data.glue_utils import get_glue_metric, get_super_glue_metric
 from t5.evaluation import metrics as mt
 import json
+from transformers import T5ForConditionalGeneration
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +30,20 @@ METRICS_DICT = {
 }
 
 
-def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
+def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
+
+    model = T5ForConditionalGeneration.from_pretrained(model_name).to(torch.device(0))
     logger.info(f"Starting Generation")
     pred_path = out_path.joinpath('predictions.jsonl')
     pred_file = pred_path.open('w', encoding="utf-8")
-    instances_seen = 0
+    batches_seen = 0
 
     # Create a metric tracker for keeping track of metrics we use.
     metric_tracker = Counter()
 
     data_iterator = tqdm(data_loader)
     for batch in data_iterator:
+        logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
         generated = model.generate(
             input_ids=batch['input_ids'].to(torch.device(0)),
             attention_mask=batch['attention_mask'].to(torch.device(0)),
@@ -47,9 +51,9 @@ def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
             early_stopping=True,
         )
 
-        # source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+        source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
         preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
-        gold = tokenizer.batch_decode(batch['target_input_ids'], skip_special_tokens=True)
+        gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
 
         logger.debug(f"Calculating metrics {metrics}")
         for m in metrics:
@@ -65,14 +69,14 @@ def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
                 json.dumps({
                     "prediction": pred,
                     "target"    : gold[i],
-                    # "input"     : source[i]
+                    "input"     : source[i]
                 }) + '\n'
             )
-            instances_seen += 1
+        batches_seen += 1
 
         metric_str = ""
         for name, value in metric_tracker.items():
-            metric_str += f"{name}:{value / instances_seen:.3f} "
+            metric_str += f"{name}: {value / batches_seen:.3f} "
         data_iterator.set_description(
             metric_str,
             refresh=True
@@ -81,8 +85,8 @@ def evaluate(task, out_path, data_loader, model, tokenizer, metrics):
     logger.info(f"Final scores for {task}:")
     final_metrics = {}
     for k, v in metric_tracker.items():
-        final_metrics[k] = v / instances_seen
-        logger.info(f"\t{k}:{v / instances_seen:.3f}")
+        final_metrics[k] = v / batches_seen
+        logger.info(f"\t{k}: {v / batches_seen:.3f}")
     pred_file.close()
     logger.info("Finished applying the prompt.")
 
