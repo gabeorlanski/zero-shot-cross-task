@@ -118,7 +118,7 @@ def run(args):
         data_loader=data_loader,
         model_name=args.model_name,
         tokenizer=tokenizer,
-        max_gen_len=max(tokenized['labels_len']),
+        max_gen_len=max(tokenized['labels_len'])+5,
         generator_kwargs={
             "num_beams"           : 4,
             "num_return_sequences": 4
