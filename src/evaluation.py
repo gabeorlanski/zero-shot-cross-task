@@ -1,5 +1,6 @@
 import logging
 from collections import Counter
+from typing import Dict
 
 from tqdm import tqdm
 import torch
@@ -30,7 +31,20 @@ METRICS_DICT = {
 }
 
 
-def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
+def evaluate(
+        task,
+        out_path,
+        data_loader,
+        model_name,
+        tokenizer,
+        metrics,
+        max_gen_len,
+        generator_kwargs: Dict = None
+):
+    # Want to always have accuracy, so add it to the metrics if it is not
+    # already present.
+    if "Accuracy" not in metrics:
+        metrics.append("Accuracy")
 
     model = T5ForConditionalGeneration.from_pretrained(model_name).to(torch.device(0))
     logger.info(f"Starting Generation")
@@ -41,23 +55,65 @@ def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
     # Create a metric tracker for keeping track of metrics we use.
     metric_tracker = Counter()
 
-    data_iterator = tqdm(data_loader)
+    def metric_str(total):
+        _o = ""
+        for _name, _v in metric_tracker.items():
+            # Do not write oracle b/c it
+            if total > 0:
+                _o += f"{_name}: {value / total:.3f} "
+            else:
+                _o += f"{_name}: {0.0:.3f} "
+        return _o
+
+    data_iterator = tqdm(data_loader, desc=metric_str(0))
     for batch in data_iterator:
         logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
         generated = model.generate(
             input_ids=batch['input_ids'].to(torch.device(0)),
             attention_mask=batch['attention_mask'].to(torch.device(0)),
-            max_length=256,
+            max_length=min(max_gen_len, 16),
             early_stopping=True,
+            **(generator_kwargs or {})
         )
 
         source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
-        preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
         gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
 
+        # Convert preds to a list of lists where each list only has a single
+        # element so that we only need to handle the case where there are
+        # multiple beams.
+        generated = generated.reshape(
+            (len(gold), generator_kwargs.get('num_return_sequences', 1), -1))
         logger.debug(f"Calculating metrics {metrics}")
+
+        # Pre initialize the preds nested array here because it saves time
+        # later. Faster then appending.
+        preds = [[None for _ in range(generated.shape[1])] for _ in range(len(gold))]
         for m in metrics:
-            batch_metrics = METRICS_DICT[m](gold, preds)
+
+            # Calculate Oracle and actual
+            batch_metrics = {}
+            for beam_num in range(generated.shape[1]):
+                # Decode only this beam
+                decoded_beams = tokenizer.batch_decode(
+                    generated[:, beam_num, :],
+                    skip_special_tokens=True
+                )
+                beam_metrics = METRICS_DICT[m](gold, decoded_beams)
+                for i, seq in enumerate(decoded_beams):
+                    preds[i][beam_num] = seq
+
+                for metric, value in beam_metrics.items():
+                    # For the actual metric, we  only care about the first beam.
+                    if beam_num == 0:
+                        batch_metrics[metric] = value
+
+                    # Calculate the oracle metric and save it. Use default
+                    # value of -1 if it has not been set yet.
+                    batch_metrics[f"oracle_{metric}"] = max(
+                        value, batch_metrics.get(f"oracle_{metric}", -1)
+                    )
+
             for k, v in batch_metrics.items():
                 metric_tracker[k] += v
 
@@ -72,21 +128,24 @@ def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
             )
         batches_seen += 1
 
-        metric_str = ""
-        for name, value in metric_tracker.items():
-            metric_str += f"{name}: {value / batches_seen:.3f} "
         data_iterator.set_description(
-            metric_str,
+            metric_str(batches_seen),
             refresh=True
         )
     data_iterator.close()
+
     logger.info(f"Final scores for {task}:")
     final_metrics = {}
     for k, v in metric_tracker.items():
         final_metrics[k] = v / batches_seen
-        logger.info(f"\t{k}: {v / batches_seen:.3f}")
+
+        # nice formatting, has no other effect.
+        met_name = f"{k}:"
+        logger.info(f"{met_name:>20} {v / batches_seen:.3f}")
+
     pred_file.close()
-    logger.info("Finished applying the prompt.")
+
+    logger.info("Finished evaluating the dataset with the prompt.")
 
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")

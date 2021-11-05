@@ -82,8 +82,11 @@ def run(args):
 
     def tok(b, v):
         output = tokenizer(v, max_length=256, truncation=True)
-        # output = {f'target_{k}': v for k, v in output.items()}
-        out = {"labels": output['input_ids'], **tokenizer(b, max_length=1024, truncation=True)}
+        out = {
+            "labels"    : output['input_ids'],
+            "labels_len": len(output['input_ids']),
+            **tokenizer(b, max_length=1024, truncation=True)
+        }
         out["input_len"] = len(out['input_ids'])
         return out
 
@@ -92,6 +95,7 @@ def run(args):
         input_columns=["prompt", "output"],
         remove_columns=result[args.split].column_names
     ).sort('input_len', reverse=True)
+
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
         pad_to_multiple_of=4,
@@ -99,6 +103,7 @@ def run(args):
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
     )
+
     data_loader = torch.utils.data.DataLoader(
         tokenized,
         batch_size=16,
@@ -106,13 +111,20 @@ def run(args):
         shuffle=False
     )
 
+    logger.info(f"Max label length is {max(tokenized['labels_len'])}")
+
     result_file = evaluate(
         task=args.task,
         out_path=results_path,
         data_loader=data_loader,
         model_name=args.model_name,
         tokenizer=tokenizer,
-        metrics=prompt.metadata.metrics or ["Accuracy"]
+        metrics=prompt.metadata.metrics or ["Accuracy"],
+        max_gen_len=max(tokenized['labels_len']),
+        generator_kwargs={
+            "num_beams"           : 4,
+            "num_return_sequences": 4
+        }
     )
 
 
