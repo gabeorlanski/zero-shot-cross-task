@@ -51,15 +51,8 @@ def evaluate(
     logger.info(f"Starting Generation")
     pred_path = out_path.joinpath('predictions.jsonl')
     pred_file = pred_path.open('w', encoding="utf-8")
-    batches_seen = 0
 
-    # Create a metric tracker for keeping track of metrics we use.
-    metric_tracker = defaultdict(list)
-    description = ""
-    for name, value in metric_tracker.items():
-        description += f"{' ' if description else ''}{name}: {0.0:.3f}"
-
-    data_iterator = tqdm(data_loader, desc=description)
+    data_iterator = tqdm(data_loader, desc="Generating")
     for batch in data_iterator:
         logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
         generated = model.generate(
@@ -83,26 +76,14 @@ def evaluate(
         # Pre initialize the preds nested array here because it saves time
         # later. Faster then appending.
         preds = [[None for _ in range(generated.shape[1])] for _ in range(len(gold))]
-        batch_metrics = {}
-        for m in metrics:
-            for beam_num in range(generated.shape[1]):
-                # Decode only this beam
-                decoded_beams = tokenizer.batch_decode(
-                    generated[:, beam_num, :],
-                    skip_special_tokens=True
-                )
-                if beam_num == 0:
-                    # only care about the metrics for the first beam.
-                    batch_metrics.update(METRICS_DICT[m](gold, decoded_beams))
-                for i, seq in enumerate(decoded_beams):
-                    preds[i][beam_num] = seq
-
-        logger.debug(f"Metrics for batch {batches_seen}:")
-        for k, v in batch_metrics.items():
-            # nice formatting, has no other effect.
-            met_name = f"{k}:"
-            logger.debug(f"{met_name:>20} {v:.3f}")
-            metric_tracker[k].append(v)
+        for beam_num in range(generated.shape[1]):
+            # Decode only this beam
+            decoded_beams = tokenizer.batch_decode(
+                generated[:, beam_num, :],
+                skip_special_tokens=True
+            )
+            for i, seq in enumerate(decoded_beams):
+                preds[i][beam_num] = seq
 
         logger.debug("Saving JSON lines")
         for i, pred in enumerate(preds):
@@ -113,30 +94,15 @@ def evaluate(
                     "input"     : source[i]
                 }) + '\n'
             )
-        batches_seen += 1
-        description = ""
-        for name, value in metric_tracker.items():
-            description += f"{' ' if description else ''}{name}: {np.mean(value):.3f}"
-        data_iterator.set_description(
-            description,
-            refresh=True
-        )
-    data_iterator.close()
 
-    # logger.info(f"Final scores for {task}:")
-    # final_metrics = {}
-    # for k, v in metric_tracker.items():
-    #     final_metrics[k] = np.mean(v)
-    #     # nice formatting, has no other effect.
-    #     met_name = f"{k}:"
-    #     logger.info(f"{met_name:>20} {np.mean(v):.3f}")
+    data_iterator.close()
 
     pred_file.close()
 
-    logger.info("Finished evaluating the dataset with the prompt.")
+    logger.info("Finished generating the dataset with the prompt.")
 
     # Sanity check
-    logger.info("Doing sanity check and calculating Oracle.")
+    logger.info("Calculating Metrics.")
     targets = []
     predictions = []
     m_trackers = defaultdict(list)
@@ -160,8 +126,6 @@ def evaluate(
         for k, v in METRICS_DICT[m](targets, predictions).items():
             met_name = f"{k}:"
             logger.info(f"{met_name:>20} {v:.3f}")
-            assert isclose(v, np.mean(metric_tracker[k]))
-            logger.debug(f"Check passed for {k}")
             final_metrics[k] = v
 
             met_name = f"oracle_{k}:"
