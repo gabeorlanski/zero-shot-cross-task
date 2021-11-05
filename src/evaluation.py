@@ -47,7 +47,7 @@ def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
         generated = model.generate(
             input_ids=batch['input_ids'].to(torch.device(0)),
             attention_mask=batch['attention_mask'].to(torch.device(0)),
-            max_length=128,
+            max_length=256,
             early_stopping=True,
         )
 
@@ -63,8 +63,6 @@ def evaluate(task, out_path, data_loader, model_name, tokenizer, metrics):
 
         logger.debug("Saving JSON lines")
         for i, pred in enumerate(preds):
-            if len(gold[i]) > 128:
-                raise ValueError("Longer Outputs then expected.")
             pred_file.write(
                 json.dumps({
                     "prediction": pred,

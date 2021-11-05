@@ -73,7 +73,7 @@ def run(args):
     result = prompt_mapper(args.task, dataset)
 
     def tok(b, v):
-        output = tokenizer(v, max_length=128, truncation=True)
+        output = tokenizer(v, max_length=256, truncation=True)
         # output = {f'target_{k}': v for k, v in output.items()}
         out = {"labels": output['input_ids'], **tokenizer(b, max_length=1024, truncation=True)}
         out["input_len"] = len(out['input_ids'])
