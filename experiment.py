@@ -120,8 +120,8 @@ def run(args):
         tokenizer=tokenizer,
         max_gen_len=max(tokenized['labels_len']) + 5,
         generator_kwargs={
-            "num_beams"           : 4,
-            "num_return_sequences": 4
+            "num_beams"           : args.beams,
+            "num_return_sequences": args.beams
         }
     )
     logger.info("Finished generating the dataset with the prompt.")
@@ -166,7 +166,14 @@ if __name__ == '__main__':
         "--batch-size",
         "-b",
         type=int,
-        default=16,
+        default=8,
         help="batch size",
+    )
+
+    parser.add_argument(
+        "--beams",
+        type=int,
+        default=4,
+        help="Number of beams",
     )
     run(parser.parse_args())

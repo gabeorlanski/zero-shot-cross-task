@@ -108,6 +108,9 @@ def evaluate(task, prediction_path, metrics, out_path, expected_total):
 
         targets_mul = [line['target']] * len(line['prediction'])
         for m in metrics:
+            # Rouge messes with a lot of stuff for some reason. So skip it.
+            if m in ['ROUGE']:
+                continue
             oracle = {}
             for x, y in zip(targets_mul, line['prediction']):
                 for k, v in METRICS_DICT[m]([x], [y]).items():
@@ -126,7 +129,10 @@ def evaluate(task, prediction_path, metrics, out_path, expected_total):
             logger.info(f"{met_name:>20} {v:.3f}")
             final_metrics[k] = v
 
-            met_name = f"oracle_{k}:"
+            if k not in m_trackers:
+                continue
+            met_name = f"oracle_{k}"
+
             final_metrics[met_name] = np.mean(m_trackers[k])
             logger.info(f"{met_name:>20} {final_metrics[met_name]:.3f}")
 
