@@ -1,6 +1,6 @@
 import argparse
 import logging
-from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration
+from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration, T5Model
 from datasets import load_dataset
 import torch
 
@@ -8,8 +8,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from src.common import prepare_environment
-from src.evaluation import generate_prediction_sequences, evaluate
-from src.preprocessing import preprocess_dataset
+from src.evaluation import evaluate_dataset_with_prompt
 import re
 
 FILE_NAME_CLEANER = re.compile(r'[_\.\- ]')
@@ -62,53 +61,17 @@ def run(args):
         dataset = load_dataset(args.task, split=args.split)
         prompt_task = args.task
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-
-    tokenized, prompt = preprocess_dataset(
-        task=experiment_name,
+    evaluate_dataset_with_prompt(
+        experiment_name=experiment_name,
+        task=args.task,
         dataset=dataset,
-        tokenizer=tokenizer,
         prompt_task=prompt_task,
-        prompt_name=prompt_name
-    )
-
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=4,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
-
-    data_loader = torch.utils.data.DataLoader(
-        tokenized,
+        prompt_name=prompt_name,
+        model_name=args.model_name,
+        results_path=results_path,
         batch_size=args.batch_size,
-        collate_fn=collator,
-        shuffle=False
-    )
-
-    logger.info(f"Max label length is {max(tokenized['labels_len'])}")
-    device = torch.device(0)
-    model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(device)
-    result_file = generate_prediction_sequences(
-        out_path=results_path,
-        data_loader=data_loader,
-        model=model,
-        device=device,
-        tokenizer=tokenizer,
-        max_gen_len=max(tokenized['labels_len']) + 5,
-        generator_kwargs={
-            "num_beams"           : args.beams,
-            "num_return_sequences": args.beams
-        }
-    )
-    logger.info("Finished generating the dataset with the prompt.")
-    logger.info(f"Beginning evaluation of the predictions.")
-    evaluate(
-        args.task,
-        result_file,
-        metrics=prompt.metadata.metrics or ["Accuracy"],
-        out_path=results_path
+        use_base_model=args.base_model,
+        num_beams=args.beams
     )
 
 
@@ -152,5 +115,11 @@ if __name__ == '__main__':
         type=int,
         default=1,
         help="Number of beams",
+    )
+    parser.add_argument(
+        "--base-model",
+        action="store_true",
+        default=False,
+        help="Use the base model instead of T5ForConditionalGeneration.",
     )
     run(parser.parse_args())

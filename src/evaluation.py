@@ -1,14 +1,13 @@
 import logging
-from collections import Counter, defaultdict
 from typing import Dict
-from math import isclose
-import numpy as np
 from tqdm import tqdm
 import torch
-from t5.data.glue_utils import get_glue_metric, get_super_glue_metric
 from t5.evaluation import metrics as mt
 import json
-from transformers import T5ForConditionalGeneration
+from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration, T5Model
+import string
+
+from src.preprocessing import preprocess_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,30 @@ METRICS_DICT = {
 }
 
 
+def serialize_prediction(
+        prediction,
+        target,
+        input_seq,
+        choice_logits=None
+) -> str:
+    """
+    Helper function to turn predictions into writeable string.
+
+    Args:
+        prediction (list): List of prediction strings.
+        target (str): The target string.
+        input_seq (str): The input string.
+        choice_logits (dict): The choices (if exist) dict with log probabilities.
+
+    """
+    return json.dumps({
+        "prediction"   : prediction,
+        "target"       : target,
+        "input"        : input_seq,
+        "choice_logits": choice_logits or {}
+    })
+
+
 def generate_prediction_sequences(
         out_path,
         data_loader,
@@ -41,7 +64,22 @@ def generate_prediction_sequences(
         max_gen_len,
         generator_kwargs: Dict = None
 ):
-    logger.info(f"Starting Generation")
+    """
+    Generate predictions.
+
+    Args:
+        out_path (Path): Path to save to.
+        data_loader (torch.utils.data.DataLoader): DataLoader to use.
+        model: Model to use.
+        tokenizer: Tokenizer to use.
+        device: device to use.
+        max_gen_len (int): Maximum length to generate.
+        generator_kwargs: kwargs for generation.
+
+    Returns:
+        Path where predictions were saved.
+    """
+    logger.info(f"Generating Prediction Sequences.")
     pred_path = out_path.joinpath('predictions.jsonl')
     pred_file = pred_path.open('w', encoding="utf-8")
     generator_kwargs = generator_kwargs or {}
@@ -67,20 +105,101 @@ def generate_prediction_sequences(
 
         logger.debug("Saving JSON lines for batch")
         for i, target in enumerate(gold):
-            pred_file.write(
-                json.dumps({
-                    "prediction": preds[i * num_beams:(i + 1) * num_beams],
-                    "target"    : target,
-                    "input"     : source[i],
-                    "choices"   : []
-                }) + '\n'
-            )
+            pred_file.write(serialize_prediction(
+                preds[i * num_beams:(i + 1) * num_beams],
+                target,
+                source[i]
+            ) + '\n')
+    data_iterator.close()
+    pred_file.close()
+    return pred_path
+
+
+def generate_predictions_choices(
+        out_path,
+        data_loader,
+        model,
+        tokenizer,
+        device,
+        choices
+):
+    """
+    Generate predictions when using answer choices.
+
+    Args:
+        out_path (Path): Path to save to.
+        data_loader (torch.utils.data.DataLoader): DataLoader to use.
+        model: Model to use.
+        tokenizer: Tokenizer to use.
+        device: device to use.
+        choices: Choices to use.
+
+    Returns:
+        Path where predictions were saved.
+    """
+    logger.info(f"Starting Generation")
+    pred_path = out_path.joinpath('predictions.jsonl')
+    pred_file = pred_path.open('w', encoding="utf-8")
+    data_iterator = tqdm(data_loader, desc="Generating")
+    if not isinstance(choices, list) or len(choices) < 2:
+        raise ValueError(f"Choices must be a list with at least two elements. got {choices}")
+
+    # We tokenize the choices here as there is a chance that the choice itself
+    # may be OOV or have more than one token, thus we handle those cases by
+    # simply tokenizing the choices.
+    choices_ids = tokenizer.convert_tokens_to_ids(choices)
+
+    if any(map(
+            lambda c: len(tokenizer(c, add_special_tokens=False)['input_ids']) > 1,
+            choices)
+    ):
+        logger.error(f"Choices '{choices}' has a choice that is more than one "
+                     f"token long. Not clear on how to handle that.")
+        raise ValueError("No idea how to handle this case ATM.")
+
+    for batch in data_iterator:
+        logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
+        input_ids = batch['input_ids'].to(device)
+        generated = model(
+            input_ids=input_ids,
+            attention_mask=batch['attention_mask'].to(device),
+            labels=input_ids
+        )
+
+        # We only take the logits of the first token.
+        choice_log_prob = generated.logits[:, 0, choices_ids]
+        source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+        gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
+
+        logger.debug("Saving JSON lines for batch")
+        for i, target in enumerate(gold):
+            ex_choice_prob = choice_log_prob[i, :]
+            prediction_choice = choices[ex_choice_prob.argmax()]
+
+            pred_file.write(serialize_prediction(
+                [prediction_choice],
+                target,
+                source[i],
+                {c: p.item() for c, p in zip(choices, ex_choice_prob)}
+            ) + '\n')
+
     data_iterator.close()
     pred_file.close()
     return pred_path
 
 
 def evaluate(task, prediction_path, metrics, out_path):
+    """
+    Evaluate a prediction file based on given metrics.
+    Args:
+        task: Name of the task
+        prediction_path: Path to the predictions
+        metrics: Metrics to use
+        out_path: Where the results can be saved.
+
+    Returns:
+        Path to where the metrics.json was saved.
+    """
     # Want to always have accuracy, so add it to the metrics if it is not
     # already present.
     if "Accuracy" not in metrics:
@@ -112,3 +231,83 @@ def evaluate(task, prediction_path, metrics, out_path):
         fp.write(json.dumps(final_metrics, indent=True))
 
     return metrics_file
+
+
+def evaluate_dataset_with_prompt(
+        experiment_name,
+        task,
+        dataset,
+        prompt_task,
+        prompt_name,
+        model_name,
+        results_path,
+        batch_size,
+        use_base_model,
+        num_beams
+):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenized, prompt = preprocess_dataset(
+        task=experiment_name,
+        dataset=dataset,
+        tokenizer=tokenizer,
+        prompt_task=prompt_task,
+        prompt_name=prompt_name
+    )
+
+    # TODO(gabeorlanski): Make this work for non-fixed choice
+    choices = prompt.get_fixed_answer_choices_list()
+
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=4,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
+    )
+
+    data_loader = torch.utils.data.DataLoader(
+        tokenized,
+        batch_size=batch_size,
+        collate_fn=collator,
+        shuffle=False
+    )
+
+    logger.info(f"Max label length is {max(tokenized['labels_len'])}")
+    device = torch.device(0)
+    if use_base_model:
+        model_cls = T5Model
+    else:
+        model_cls = T5ForConditionalGeneration
+    model = model_cls.from_pretrained(model_name).to(device)
+    model.eval()
+
+    if choices is None:
+        result_file = generate_prediction_sequences(
+            out_path=results_path,
+            data_loader=data_loader,
+            model=model,
+            device=device,
+            tokenizer=tokenizer,
+            max_gen_len=max(tokenized['labels_len']) + 5,
+            generator_kwargs={
+                "num_beams"           : num_beams,
+                "num_return_sequences": num_beams
+            }
+        )
+    else:
+        result_file = generate_predictions_choices(
+            out_path=results_path,
+            data_loader=data_loader,
+            model=model,
+            device=device,
+            tokenizer=tokenizer,
+            choices=choices
+        )
+    logger.info("Finished generating the dataset with the prompt.")
+    logger.info(f"Beginning evaluation of the predictions.")
+    evaluate(
+        task,
+        result_file,
+        metrics=prompt.metadata.metrics or ["Accuracy"],
+        out_path=results_path
+    )

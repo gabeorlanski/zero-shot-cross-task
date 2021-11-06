@@ -40,6 +40,7 @@ def test_generate_prediction_sequences(tmpdir):
     )
 
     model = T5ForConditionalGeneration.from_pretrained('patrickvonplaten/t5-tiny-random')
+    model.eval()
     model.generate = MagicMock()
 
     expected_tokens = tokenizer(
@@ -67,6 +68,63 @@ def test_generate_prediction_sequences(tmpdir):
     for i, v in enumerate(ds):
         assert result[i]['prediction'] == ["This is a test for evaluation",
                                            "This is a second beam"]
+
+        assert result[i]['target'] == tokenizer.decode(v['labels'], skip_special_tokens=True)
+        assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
+
+
+def test_generate_prediction_choices(tmpdir):
+    ds = load_dataset("anli", split="train_r1[:16]")
+    tokenizer = AutoTokenizer.from_pretrained("t5-small")
+
+    def tok(p, h):
+        labels = tokenizer(h)
+        source = tokenizer(p)
+        return {"labels": labels['input_ids'], "input_len": sum(source['attention_mask']), **source}
+
+    ds = ds.map(  # type: ignore
+        tok,
+        input_columns=['premise', 'hypothesis'],
+        remove_columns=ds.column_names
+    ).sort("input_len")
+
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=4,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
+    )
+
+    data_loader = torch.utils.data.DataLoader(
+        ds,
+        batch_size=1,
+        collate_fn=collator,
+        shuffle=False
+    )
+
+    model = T5ForConditionalGeneration.from_pretrained('t5-small')
+    model.eval()
+    res_path = evaluation.generate_predictions_choices(
+        Path(tmpdir),
+        data_loader,
+        model,
+        tokenizer,
+        torch.device("cpu"),
+        ["Yes", "Maybe", "No"]
+    )
+
+    assert res_path.stem == "predictions"
+    assert res_path.exists()
+
+    result = list(map(json.loads, res_path.read_text("utf-8").splitlines(False)))
+    assert len(result) == len(ds)
+
+    for i, v in enumerate(ds):
+        assert set(result[i]['choice_logits'].keys()) == {"Yes", "Maybe", "No"}
+        assert result[i]['prediction'] == [
+            max(["Yes", "Maybe", "No"], key=lambda x: result[i]['choice_logits'][x])
+        ]
 
         assert result[i]['target'] == tokenizer.decode(v['labels'], skip_special_tokens=True)
         assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
