@@ -139,7 +139,8 @@ def run(cfg: DictConfig):
                 subset=task_name if dataset_name != task_name else None
             )
             choices = prompt.get_fixed_answer_choices_list()
-
+            if choices is not None:
+                choices = "|".join(choices)
             run_cfg = {
                 "choices_in_prompt": prompt.metadata.choices_in_prompt or False,
                 "choices"          : choices,
