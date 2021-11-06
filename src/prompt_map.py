@@ -92,6 +92,3 @@ class PromptMapper(Registrable):
 class DefaultPromptMapper(PromptMapper):
     pass
 
-
-def apply_prompt_to_dataset(dataset: Dataset, prompt_cfg: Dict):
-    return

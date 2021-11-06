@@ -1,23 +1,15 @@
 import argparse
 import logging
-from transformers import T5ForConditionalGeneration, AutoTokenizer, DataCollatorWithPadding, \
-    DataCollatorForSeq2Seq
-from datasets import load_dataset, load_metric
-from pathlib import Path
-import shutil
+from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration
+from datasets import load_dataset
 import torch
-
-# Prompt it
-from promptsource.templates import DatasetTemplates
-from tqdm import tqdm
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from src.common import prepare_environment
-from src.prompt_map import PromptMapper
-from src.evaluation import generate, evaluate
-
+from src.evaluation import generate_prediction_sequences, evaluate
+from src.preprocessing import preprocess_dataset
 import re
 
 FILE_NAME_CLEANER = re.compile(r'[_\.\- ]')
@@ -64,37 +56,21 @@ def run(args):
 
     # Load the correct dataset for this task.
     if args.subset:
-        dataset = load_dataset(args.task, args.subset)
+        dataset = load_dataset(args.task, args.subset, split=args.split)
         prompt_task = f"{args.task}/{args.subset}"
     else:
-        dataset = load_dataset(args.task)
+        dataset = load_dataset(args.task, split=args.split)
         prompt_task = args.task
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
-    task_prompt_templates = DatasetTemplates(prompt_task)
-    logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
-    # Select a prompt by name
-    prompt = task_prompt_templates[prompt_name]
-
-    prompt_mapper = PromptMapper.by_name("default")(prompt_name, prompt, 4, batch_size=1)
-    result = prompt_mapper(args.task, dataset)
-
-    def tok(b, v):
-        output = tokenizer(v, max_length=256, truncation=True)
-        out = {
-            "labels"    : output['input_ids'],
-            "labels_len": len(output['input_ids']),
-            **tokenizer(b, max_length=1024, truncation=True)
-        }
-        out["input_len"] = len(out['input_ids'])
-        return out
-
-    tokenized = result[args.split].map(
-        tok,
-        input_columns=["prompt", "output"],
-        remove_columns=result[args.split].column_names
-    ).sort('input_len', reverse=True)
+    tokenized, prompt = preprocess_dataset(
+        task=experiment_name,
+        dataset=dataset,
+        tokenizer=tokenizer,
+        prompt_task=prompt_task,
+        prompt_name=prompt_name
+    )
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
@@ -112,11 +88,13 @@ def run(args):
     )
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
-
-    result_file = generate(
+    device = torch.device(0)
+    model = T5ForConditionalGeneration.from_pretrained(args.model_name).to(device)
+    result_file = generate_prediction_sequences(
         out_path=results_path,
         data_loader=data_loader,
-        model_name=args.model_name,
+        model=model,
+        device=device,
         tokenizer=tokenizer,
         max_gen_len=max(tokenized['labels_len']) + 5,
         generator_kwargs={
@@ -130,8 +108,7 @@ def run(args):
         args.task,
         result_file,
         metrics=prompt.metadata.metrics or ["Accuracy"],
-        out_path=results_path,
-        expected_total=len(tokenized['labels'])
+        out_path=results_path
     )
 
 
@@ -173,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--beams",
         type=int,
-        default=4,
+        default=1,
         help="Number of beams",
     )
     run(parser.parse_args())
