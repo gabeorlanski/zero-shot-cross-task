@@ -147,15 +147,17 @@ def generate_predictions_choices(
     # We tokenize the choices here as there is a chance that the choice itself
     # may be OOV or have more than one token, thus we handle those cases by
     # simply tokenizing the choices.
-    choices_ids = tokenizer.convert_tokens_to_ids(choices)
+    logger.info("Tokenizing choices for summing probabilities")
+    choice_tuples = []
+    for choice in choices:
+        choice_tokenized = tokenizer(choice, add_special_tokens=False)['input_ids']
 
-    if any(map(
-            lambda c: len(tokenizer(c, add_special_tokens=False)['input_ids']) > 1,
-            choices)
-    ):
-        logger.error(f"Choices '{choices}' has a choice that is more than one "
-                     f"token long. Not clear on how to handle that.")
-        raise ValueError("No idea how to handle this case ATM.")
+        # We need two arrays: One to select the sequence number, and the second
+        # to select the token idx.
+        choice_tuples.append(
+            (torch.arange(len(choice_tokenized)), torch.Tensor(choice_tokenized).long())
+        )
+
     with torch.no_grad():
         for batch in data_iterator:
             logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
@@ -166,14 +168,15 @@ def generate_predictions_choices(
                 labels=input_ids
             )
 
-            # We only take the logits of the first token.
-            choice_log_prob = generated.logits[:, 0, choices_ids]
             source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
             gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
+            choice_probs = torch.zeros((len(gold), len(choices)))
+            for i, choice in enumerate(choice_tuples):
+                choice_probs[:, i] = generated.logits[:, choice[0], choice[1]].sum(-1)
 
             logger.debug("Saving JSON lines for batch")
             for i, target in enumerate(gold):
-                ex_choice_prob = choice_log_prob[i, :]
+                ex_choice_prob = choice_probs[i, :]
                 prediction_choice = choices[ex_choice_prob.argmax()]
 
                 pred_file.write(serialize_prediction(
@@ -275,7 +278,7 @@ def evaluate_dataset_with_prompt(
     )
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
-    logger.info(f"Max Input length is {max(tokenized['input_ids'])}")
+    logger.info(f"Max Input length is {max(tokenized['input_len'])}")
     device = torch.device(0)
     if use_base_model:
         model_cls = T5Model

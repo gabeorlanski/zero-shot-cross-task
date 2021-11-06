@@ -1,6 +1,4 @@
 import argparse
-import logging
-from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration, T5Model
 from datasets import load_dataset
 import torch
 

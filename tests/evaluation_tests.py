@@ -4,7 +4,7 @@ from datasets import load_dataset
 from pathlib import Path
 from unittest.mock import MagicMock
 import torch
-
+import math
 import json
 from src import evaluation
 
@@ -73,7 +73,9 @@ def test_generate_prediction_sequences(tmpdir):
         assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
 
 
-def test_generate_prediction_choices(tmpdir):
+@pytest.mark.parametrize("choices", [["Yes", "Maybe", "No"], ["Answer 1", "Answer 2", "Answer 3"]],
+                         ids=["Single Token", "Multi-Token"])
+def test_generate_prediction_choices(tmpdir, choices):
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
@@ -86,7 +88,7 @@ def test_generate_prediction_choices(tmpdir):
         tok,
         input_columns=['premise', 'hypothesis'],
         remove_columns=ds.column_names
-    ).sort("input_len")
+    ).sort("input_len", reverse=True)
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
@@ -103,15 +105,32 @@ def test_generate_prediction_choices(tmpdir):
         shuffle=False
     )
 
+    choice_ids = list(map(
+        lambda c: tokenizer(c, add_special_tokens=False)['input_ids'],
+        choices)
+    )
+    single_batch = collator(list(ds))
     model = T5ForConditionalGeneration.from_pretrained('t5-small')
     model.eval()
+
+    expected_logits = model(
+        input_ids=single_batch['input_ids'],
+        attention_mask=single_batch['attention_mask'],
+        labels=single_batch['input_ids']
+    ).logits
+
+    expected_choice_probs = torch.zeros((expected_logits.shape[0], len(choices)))
+    for choice, tokens in enumerate(choice_ids):
+        for i, t in enumerate(tokens):
+            expected_choice_probs[:, choice] += expected_logits[:, i, t]
+
     res_path = evaluation.generate_predictions_choices(
         Path(tmpdir),
         data_loader,
         model,
         tokenizer,
         torch.device("cpu"),
-        ["Yes", "Maybe", "No"]
+        choices=choices
     )
 
     assert res_path.stem == "predictions"
@@ -121,13 +140,19 @@ def test_generate_prediction_choices(tmpdir):
     assert len(result) == len(ds)
 
     for i, v in enumerate(ds):
-        assert set(result[i]['choice_logits'].keys()) == {"Yes", "Maybe", "No"}
+        assert set(result[i]['choice_logits'].keys()) == set(choices)
         assert result[i]['prediction'] == [
-            max(["Yes", "Maybe", "No"], key=lambda x: result[i]['choice_logits'][x])
+            max(choices, key=lambda x: result[i]['choice_logits'][x])
         ]
 
         assert result[i]['target'] == tokenizer.decode(v['labels'], skip_special_tokens=True)
         assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
+
+        for j, choice in enumerate(choices):
+            assert math.isclose(
+                result[i]['choice_logits'][choice],
+                expected_choice_probs[i, j].item()
+            )
 
 
 def test_evaluate(tmpdir):
