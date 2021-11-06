@@ -257,6 +257,7 @@ def evaluate_dataset_with_prompt(
 
     # TODO(gabeorlanski): Make this work for non-fixed choice
     choices = prompt.get_fixed_answer_choices_list()
+    logger.info(f"Choices found: {choices}")
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
@@ -274,6 +275,7 @@ def evaluate_dataset_with_prompt(
     )
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
+    logger.info(f"Max Input length is {max(tokenized['input_ids'])}")
     device = torch.device(0)
     if use_base_model:
         model_cls = T5Model
