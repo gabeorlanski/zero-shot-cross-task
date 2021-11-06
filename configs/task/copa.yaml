@@ -1,0 +1,9 @@
+defaults:
+  - _self_
+
+name: copa
+verbose_name: ChoiceofPlausibleAlternatives
+parent_dataset: super_glue
+
+splits:
+  - validation

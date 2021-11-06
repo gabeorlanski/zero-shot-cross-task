@@ -1,0 +1,9 @@
+defaults:
+  - _self_
+
+name: wic
+verbose_name: WordsinContext
+parent_dataset: super_glue
+
+splits:
+  - validation

@@ -1,0 +1,9 @@
+defaults:
+  - _self_
+
+name: rte
+verbose_name: RecognizingTextualEntailment
+parent_dataset: super_glue
+
+splits:
+  - validation
