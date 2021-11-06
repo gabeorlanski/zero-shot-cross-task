@@ -156,32 +156,32 @@ def generate_predictions_choices(
         logger.error(f"Choices '{choices}' has a choice that is more than one "
                      f"token long. Not clear on how to handle that.")
         raise ValueError("No idea how to handle this case ATM.")
+    with torch.no_grad():
+        for batch in data_iterator:
+            logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
+            input_ids = batch['input_ids'].to(device)
+            generated = model(
+                input_ids=input_ids,
+                attention_mask=batch['attention_mask'].to(device),
+                labels=input_ids
+            )
 
-    for batch in data_iterator:
-        logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
-        input_ids = batch['input_ids'].to(device)
-        generated = model(
-            input_ids=input_ids,
-            attention_mask=batch['attention_mask'].to(device),
-            labels=input_ids
-        )
+            # We only take the logits of the first token.
+            choice_log_prob = generated.logits[:, 0, choices_ids]
+            source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+            gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
 
-        # We only take the logits of the first token.
-        choice_log_prob = generated.logits[:, 0, choices_ids]
-        source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
-        gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
+            logger.debug("Saving JSON lines for batch")
+            for i, target in enumerate(gold):
+                ex_choice_prob = choice_log_prob[i, :]
+                prediction_choice = choices[ex_choice_prob.argmax()]
 
-        logger.debug("Saving JSON lines for batch")
-        for i, target in enumerate(gold):
-            ex_choice_prob = choice_log_prob[i, :]
-            prediction_choice = choices[ex_choice_prob.argmax()]
-
-            pred_file.write(serialize_prediction(
-                [prediction_choice],
-                target,
-                source[i],
-                {c: p.item() for c, p in zip(choices, ex_choice_prob)}
-            ) + '\n')
+                pred_file.write(serialize_prediction(
+                    [prediction_choice],
+                    target,
+                    source[i],
+                    {c: p.item() for c, p in zip(choices, ex_choice_prob)}
+                ) + '\n')
 
     data_iterator.close()
     pred_file.close()
