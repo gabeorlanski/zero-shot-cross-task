@@ -145,6 +145,7 @@ def run(cfg: DictConfig):
                 "choices_in_prompt": prompt.metadata.choices_in_prompt or False,
                 "choices"          : choices,
                 "original_task"    : prompt.metadata.original_task,
+                "has_choices"      : choices is not None,
                 **flatten(dict(cfg), sep='.')
             }
 
@@ -157,7 +158,8 @@ def run(cfg: DictConfig):
                 project="zero-shot-eval",
                 job_type="eval",
                 entity="gabeorlanski",
-                group=f"{verbose_name}:{split_fn}", name=prompt_fn,
+                group=f"{verbose_name}[{split_fn}]", name=prompt_fn,
+                tags=[prompt_task, prompt_name, cfg['model_name']],
                 config=run_cfg
             )
             run.log(json.loads(metrics.read_text('utf-8')))
