@@ -14,7 +14,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.common import prepare_environment
 from src.evaluation import evaluate_dataset_with_prompt
 
-FILE_NAME_CLEANER = re.compile(r'[_\.\- ,]')
+FILE_NAME_CLEANER = re.compile(r'[_\.\- ,\?]')
 
 logger = logging.getLogger(__name__)
 
