@@ -1,0 +1,9 @@
+defaults:
+  - _self_
+
+name: cb
+verbose_name: CommitmentBank
+parent_dataset: super_glue
+
+splits:
+  - validation

@@ -16,7 +16,7 @@ def prepare_environment(
         seed,
         numpy_seed,
         torch_seed
-) -> Tuple[Path, Path, logging.Logger]:
+) -> Tuple[Path, Path]:
     """
     Prepare environment for the experiment
     Args:
@@ -42,7 +42,7 @@ def prepare_environment(
         torch.cuda.manual_seed_all(torch_seed)
 
     # Setup logging etc
-    out_path = Path("results", experiment_name.replace(":", "-"))
+    out_path = Path(experiment_name.replace(":", "-"))
     if not out_path.exists():
         out_path.mkdir(parents=True)
     # Create the child dir for the results path
@@ -56,8 +56,9 @@ def prepare_environment(
         shutil.rmtree(results_path)
         results_path.mkdir(parents=True)
 
-    prepare_global_logging(results_path.resolve().absolute(), log_name="experiment")
-    logger = logging.getLogger("experiment")
+    # prepare_global_logging(results_path.resolve().absolute(), log_name="experiment")
+    # logger = logging.getLogger("experiment")
 
-    logger.info(f"Environment has been prepared for experiment: {experiment_name}")
-    return out_path, results_path, logger
+    # logger.info(f"Environment has been prepared for experiment: {experiment_name}")
+    return out_path, results_path
+

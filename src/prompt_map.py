@@ -17,13 +17,11 @@ class PromptMapper(Registrable):
 
     def __init__(
             self,
-            prompt_name: str,
             prompt: Template,
             num_proc=1,
             remove_columns=None,
             batch_size=None
     ):
-        self.prompt_name = prompt_name
         self.prompt = prompt
         self.num_proc = num_proc
         self.remove_columns = remove_columns or []
@@ -33,7 +31,7 @@ class PromptMapper(Registrable):
         raise NotImplementedError()
 
     def __call__(self, task: str, dataset: Dataset) -> Dataset:
-        logging.info(f"Preprocessing '{task}' with prompt {self.prompt_name}")
+        logging.info(f"Preprocessing '{task}' with prompt {self.prompt.name}")
 
         # Try to preprocess the dataset with a subclass implementation, if that
         # does not work just use the original dataset.

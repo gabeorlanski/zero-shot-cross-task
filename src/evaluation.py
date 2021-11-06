@@ -237,11 +237,9 @@ def evaluate(task, prediction_path, metrics, out_path):
 
 
 def evaluate_dataset_with_prompt(
-        experiment_name,
         task,
         dataset,
-        prompt_task,
-        prompt_name,
+        prompt,
         model_name,
         results_path,
         batch_size,
@@ -251,11 +249,10 @@ def evaluate_dataset_with_prompt(
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenized, prompt = preprocess_dataset(
-        task=experiment_name,
+        task=task,
         dataset=dataset,
         tokenizer=tokenizer,
-        prompt_task=prompt_task,
-        prompt_name=prompt_name
+        prompt=prompt
     )
 
     # TODO(gabeorlanski): Make this work for non-fixed choice

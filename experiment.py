@@ -1,131 +1,136 @@
 import argparse
 from datasets import load_dataset
 import torch
-
+import logging
+import os
 import hydra
+from promptsource.templates import DatasetTemplates
+import re
+import wandb
 from omegaconf import DictConfig, OmegaConf
 
 from src.common import prepare_environment
 from src.evaluation import evaluate_dataset_with_prompt
-import re
 
 FILE_NAME_CLEANER = re.compile(r'[_\.\- ]')
 
+logger = logging.getLogger(__name__)
 
-def run(args):
+
+def experiment(
+        cfg,
+        prompt,
+        dataset_name,
+        split,
+        experiment_name,
+        split_dir_name,
+        prompt_file_name,
+        seeds,
+        subset=None
+):
+    out_path, results_path = prepare_environment(
+        split_dir_name,
+        prompt_file_name,
+        cfg["force"],
+        **seeds
+    )
+    logger.info(f"Starting experiment with name '{experiment_name}")
+    logger.info(f"Loading task {cfg['task']} with model {cfg['model_name']}")
+
+    # Load the correct dataset for this task.
+    if subset:
+        dataset = load_dataset(dataset_name, subset, split=split)
+    else:
+        dataset = load_dataset(dataset_name, split=split)
+
+    evaluate_dataset_with_prompt(
+        task=experiment_name,
+        dataset=dataset,
+        prompt=prompt,
+        model_name=cfg['model_name'],
+        results_path=results_path,
+        batch_size=cfg['batch_size'],
+        use_base_model=cfg.get('base_model', False),
+        num_beams=cfg['beams'],
+        force_generation=cfg['force_generation']
+    )
+    return results_path
+
+
+@hydra.main(config_path='configs', config_name="config")
+def run(cfg: DictConfig):
     """
     Run an experiment
 
     Args:
-        args: CLI Args
+        cfg: Run configs
     """
-
+    logger.info(f"Starting Experiment.")
     # Setup the seeds and logging
-    seed = 1966
-    numpy_seed = 1991
-    torch_seed = 1999
-    try:
-        prompt_task, prompt_name = args.task_prompt.split("|")
-    except ValueError:
-        prompt_task = None
-        prompt_name = args.task_prompt
-
-    # Cleaning the experiment name to make it savable and readable (somewhat)
-    experiment_name = f"{FILE_NAME_CLEANER.sub('_', args.task).replace('/', '_')}" \
-                      f"{'.' + FILE_NAME_CLEANER.sub('_', args.subset) if args.subset else ''}"
-    prompt_file_name = f"{FILE_NAME_CLEANER.sub('_', args.split)}"
-    if prompt_task is not None:
-        prompt_file_name += f":{FILE_NAME_CLEANER.sub('_', prompt_task).replace('/', '_')}" \
-                            f".{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
-    else:
-        prompt_file_name += f":{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
-
-    out_path, results_path, logger = prepare_environment(
-        experiment_name,
-        prompt_file_name,
-        args.force,
-        seed=seed,
-        numpy_seed=numpy_seed,
-        torch_seed=torch_seed
+    seeds = dict(
+        seed=1966,
+        numpy_seed=1991,
+        torch_seed=1999
     )
-    logger.info(f"Starting experiment with name '{experiment_name}")
-    logger.info(f"Loading task {args.task} with model {args.model_name}")
 
-    # Load the correct dataset for this task.
-    if args.subset:
-        dataset = load_dataset(args.task, args.subset, split=args.split)
-        prompt_task = f"{args.task}/{args.subset}"
+    # Get the task config
+    task_cfg = cfg['task']
+    task_name = task_cfg['name']
+    verbose_name = task_cfg.get('verbose_name', task_name)
+    dataset_name = task_cfg.get("parent_dataset", task_name)
+
+    logger.info(f"Starting experiment with task {verbose_name}")
+
+    if task_name != dataset_name:
+        prompt_task = f"{dataset_name}/{task_name}"
     else:
-        dataset = load_dataset(args.task, split=args.split)
-        prompt_task = args.task
+        prompt_task = task_name
 
-    evaluate_dataset_with_prompt(
-        experiment_name=experiment_name,
-        task=args.task,
-        dataset=dataset,
-        prompt_task=prompt_task,
-        prompt_name=prompt_name,
-        model_name=args.model_name,
-        results_path=results_path,
-        batch_size=args.batch_size,
-        use_base_model=args.base_model,
-        num_beams=args.beams,
-        force_generation=args.force_generation
-    )
+    task_prompt_templates = DatasetTemplates(prompt_task)
+    logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
+
+    # Get the splits and the prompts we will use. We first check if they have
+    # been passed through the CLI. This indicates that the user specifically
+    # want to use certain splits. Otherwise we use those from the task.
+    splits_to_use = cfg.get("splits", task_cfg['splits'])
+    prompts_to_use = cfg.get("prompts", task_prompt_templates.all_template_names)
+
+    logger.info(f"Splits to use are: {splits_to_use}")
+    logger.info(f"Prompts to use are: {splits_to_use}")
+
+    for split in splits_to_use:
+        for prompt_name in prompts_to_use:
+            # Select a prompt by name
+            prompt = task_prompt_templates[prompt_name]
+
+            prompt_fn = f"{FILE_NAME_CLEANER.sub('_', prompt_task).replace('/', '_')}" \
+                        f".{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
+            split_fn = f"{FILE_NAME_CLEANER.sub('_', split).replace('/', '_')}"
+
+            group_name = f"{FILE_NAME_CLEANER.sub('_', verbose_name).replace('/', '_')}"
+
+            experiment_name = f"{group_name}:{split_fn}:{prompt_fn}"
+
+            results_path = experiment(
+                cfg=cfg,
+                prompt=prompt,
+                dataset_name=dataset_name,
+                split=split,
+                experiment_name=experiment_name,
+                split_dir_name=split_fn,
+                prompt_file_name=prompt_fn,
+                seeds=seeds,
+                subset=task_name if dataset_name != task_name else None
+            )
+            choices = prompt.get_fixed_answer_choices_list()
+
+            run_cfg = {
+                "choices_in_prompt": prompt.metadata.choices_in_prompt or False,
+                "choices"          : choices
+            }
+
+    logger.info(f"Finished all prompts and splits.")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("task", type=str, help="Name of the task")
-    parser.add_argument("split", type=str, help="split name")
-    parser.add_argument("task_prompt", type=str, help="Name of the Task|Name of Prompt")
-    parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        required=False,
-        help="overwrite the output directory if it exists",
-    )
-    parser.add_argument(
-        "--model-name",
-        "-model",
-        type=str,
-        default="t5-base",
-        help="Model to use",
-    )
-
-    parser.add_argument(
-        "--subset",
-        type=str,
-        default=None,
-        help="Subset of the dataset to use",
-    )
-
-    parser.add_argument(
-        "--batch-size",
-        "-b",
-        type=int,
-        default=8,
-        help="batch size",
-    )
-
-    parser.add_argument(
-        "--beams",
-        type=int,
-        default=1,
-        help="Number of beams",
-    )
-    parser.add_argument(
-        "--base-model",
-        action="store_true",
-        default=False,
-        help="Use the base model instead of T5ForConditionalGeneration.",
-    )
-
-    parser.add_argument(
-        "--force-generation",
-        action="store_true",
-        default=False,
-        help="Force generation of results rather than selecting from choices",
-    )
-    run(parser.parse_args())
+    run()
