@@ -1,4 +1,6 @@
 import argparse
+import json
+
 from datasets import load_dataset
 import torch
 import logging
@@ -55,6 +57,20 @@ def experiment(
         force_generation=cfg['force_generation']
     )
     return results_path
+
+
+import collections
+
+
+def flatten(d, parent_key='', sep='_'):
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.abc.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 @hydra.main(config_path='configs', config_name="config")
@@ -126,8 +142,28 @@ def run(cfg: DictConfig):
 
             run_cfg = {
                 "choices_in_prompt": prompt.metadata.choices_in_prompt or False,
-                "choices"          : choices
+                "choices"          : choices,
+                "original_task"    : prompt.metadata.original_task,
+                **flatten(dict(cfg), sep='.')
             }
+
+            metrics = results_path.joinpath("metrics.json")
+            preds = results_path.joinpath("predictions.jsonl")
+            assert metrics.exists()
+            assert preds.exists()
+
+            run = wandb.init(
+                project="zero-shot-eval",
+                job_type="eval",
+                entity="gabeorlanski",
+                group=f"{verbose_name}:{split_fn}", name=prompt_fn,
+                config=run_cfg
+            )
+            run.log(json.loads(metrics.read_text('utf-8')))
+            artifact = wandb.Artifact(f"{group_name}.{split_fn}.{prompt_fn}", type="predictions")
+            artifact.add_file(str(preds.resolve().absolute()))
+            run.log_artifact(artifact)
+            run.finish()
 
     logger.info(f"Finished all prompts and splits.")
 
