@@ -140,12 +140,18 @@ def run(cfg: DictConfig):
             )
             choices = prompt.get_fixed_answer_choices_list()
             if choices is not None:
-                choices = "|".join(choices)
+                choice_count = len(choices)
+                choices = ", ".join(choices)
+            else:
+                choice_count = 0
             run_cfg = {
                 "choices_in_prompt": prompt.metadata.choices_in_prompt or False,
                 "choices"          : choices,
                 "original_task"    : prompt.metadata.original_task,
                 "has_choices"      : choices is not None,
+                "prompt_task"      : prompt_task,
+                "prompt_name"      : prompt_name,
+                "choice_count"     : choice_count,
                 **flatten(dict(cfg), sep='.')
             }
 
@@ -159,7 +165,8 @@ def run(cfg: DictConfig):
                 job_type="eval",
                 entity="gabeorlanski",
                 group=f"{verbose_name}[{split_fn}]", name=prompt_fn,
-                tags=[prompt_task, prompt_name, cfg['model_name']],
+                tags=[f"PromptTask:{prompt_task}", f"PromptName:{prompt_name}", task_name,
+                      dataset_name, cfg['model_name']],
                 config=run_cfg
             )
             run.log(json.loads(metrics.read_text('utf-8')))
