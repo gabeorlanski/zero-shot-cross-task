@@ -89,7 +89,7 @@ def generate_prediction_sequences(
         generated = model.generate(
             input_ids=batch['input_ids'].to(device),
             attention_mask=batch['attention_mask'].to(device),
-            max_length=min(max_gen_len, 16),
+            max_length=min(max_gen_len, 64),
             early_stopping=True,
             **generator_kwargs
         )
@@ -291,7 +291,7 @@ def evaluate_dataset_with_prompt(
             model=model,
             device=device,
             tokenizer=tokenizer,
-            max_gen_len=max(tokenized['labels_len']) + 5,
+            max_gen_len=max(tokenized['labels_len']) + 32,
             generator_kwargs={
                 "num_beams"           : num_beams,
                 "num_return_sequences": num_beams

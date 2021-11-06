@@ -13,6 +13,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.common import prepare_environment
 from src.evaluation import evaluate_dataset_with_prompt
+from unidecode import unidecode
 
 FILE_NAME_CLEANER = re.compile(r'[_\.\- ,\?]')
 
@@ -91,14 +92,14 @@ def run(cfg: DictConfig):
 
     # Get the task config
     task_cfg = cfg['task']
-    task_name = task_cfg['name']
+    task_name = unidecode(task_cfg['name'])
     verbose_name = task_cfg.get('verbose_name', task_name)
     dataset_name = task_cfg.get("parent_dataset", task_name)
 
     logger.info(f"Starting experiment with task {verbose_name}")
 
     if task_name != dataset_name:
-        prompt_task = f"{dataset_name}/{task_name}"
+        prompt_task = unidecode(f"{dataset_name}/{task_name}")
     else:
         prompt_task = task_name
 
@@ -119,11 +120,11 @@ def run(cfg: DictConfig):
             # Select a prompt by name
             prompt = task_prompt_templates[prompt_name]
 
-            prompt_fn = f"{FILE_NAME_CLEANER.sub('_', prompt_task).replace('/', '_')}" \
-                        f".{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}"
-            split_fn = f"{FILE_NAME_CLEANER.sub('_', split).replace('/', '_')}"
+            prompt_fn = unidecode(f"{FILE_NAME_CLEANER.sub('_', prompt_task).replace('/', '_')}" \
+                                  f".{FILE_NAME_CLEANER.sub('_', prompt_name).replace('/', '_')}")
+            split_fn = unidecode(f"{FILE_NAME_CLEANER.sub('_', split).replace('/', '_')}")
 
-            group_name = f"{FILE_NAME_CLEANER.sub('_', verbose_name).replace('/', '_')}"
+            group_name = unidecode(f"{FILE_NAME_CLEANER.sub('_', verbose_name).replace('/', '_')}")
 
             experiment_name = f"{group_name}:{split_fn}:{prompt_fn}"
 
@@ -170,7 +171,9 @@ def run(cfg: DictConfig):
                 config=run_cfg
             )
             run.log(json.loads(metrics.read_text('utf-8')))
-            artifact = wandb.Artifact(f"{group_name}.{split_fn}.{prompt_fn}", type="predictions")
+            artifact = wandb.Artifact(
+                unidecode(f"{group_name}.{split_fn}.{prompt_fn}"),
+                type="predictions")
             artifact.add_file(str(preds.resolve().absolute()))
             run.log_artifact(artifact)
             run.finish()
