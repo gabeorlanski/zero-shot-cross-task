@@ -243,7 +243,8 @@ def evaluate_dataset_with_prompt(
         results_path,
         batch_size,
         use_base_model,
-        num_beams
+        num_beams,
+        force_generation=False
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenized, prompt = preprocess_dataset(
@@ -281,7 +282,7 @@ def evaluate_dataset_with_prompt(
     model = model_cls.from_pretrained(model_name).to(device)
     model.eval()
 
-    if choices is None:
+    if choices is None or force_generation:
         result_file = generate_prediction_sequences(
             out_path=results_path,
             data_loader=data_loader,

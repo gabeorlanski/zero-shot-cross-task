@@ -71,7 +71,8 @@ def run(args):
         results_path=results_path,
         batch_size=args.batch_size,
         use_base_model=args.base_model,
-        num_beams=args.beams
+        num_beams=args.beams,
+        force_generation=args.force_generation
     )
 
 
@@ -121,5 +122,12 @@ if __name__ == '__main__':
         action="store_true",
         default=False,
         help="Use the base model instead of T5ForConditionalGeneration.",
+    )
+
+    parser.add_argument(
+        "--force-generation",
+        action="store_true",
+        default=False,
+        help="Force generation of results rather than selecting from choices",
     )
     run(parser.parse_args())
