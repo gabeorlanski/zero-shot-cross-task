@@ -1,7 +1,10 @@
 #!/bin/bash
 # Run the experiments
-python experiment.py task=cb model_name=$0 disable_tracking=True
-python experiment.py task=anli model_name=$0 disable_tracking=True
-python experiment.py task=rte model_name=$0 disable_tracking=True
-python experiment.py task=wsc model_name=$0 disable_tracking=True
-python experiment.py task=wic model_name=$0 disable_tracking=True
+python experiment.py task=cb +split=validation model_name=$0
+python experiment.py task=anli +split=dev_r1 model_name=$0
+python experiment.py task=anli +split=dev_r2 model_name=$0
+python experiment.py task=anli +split=dev_r3 model_name=$0
+python experiment.py task=rte +split=validation model_name=$0
+python experiment.py task=wsc +split=validation model_name=$0
+python experiment.py task="wsc.fixed" +split=validation model_name=$0
+python experiment.py task=wic +split=validation model_name=$0

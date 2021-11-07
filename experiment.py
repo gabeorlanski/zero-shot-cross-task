@@ -181,13 +181,15 @@ def run(cfg: DictConfig):
             else:
                 tags.append("Generation")
 
+            tags.append(f"PromptCat:{prompt_dict['category']}")
+            tags.append(category)
+
             run = wandb.init(
                 project="zero-shot-eval",
                 job_type="eval",
                 entity="gabeorlanski",
                 group=f"{verbose_name}[{split_file_name}]", name=prompt_fn,
-                tags=[f"PromptTask:{prompt_task}", f"PromptName:{prompt_name}", task_name,
-                      dataset_name, cfg['model_name']],
+                tags=tags,
                 config=run_cfg
             )
             metrics = json.loads(metrics_path.read_text('utf-8'))
