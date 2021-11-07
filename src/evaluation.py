@@ -1,13 +1,17 @@
 import logging
+from pathlib import Path
 from typing import Dict
 from tqdm import tqdm
 import torch
 from t5.evaluation import metrics as mt
 import json
-from transformers import AutoTokenizer, DataCollatorForSeq2Seq, T5ForConditionalGeneration, T5Model
-import string
+from transformers import DataCollatorForSeq2Seq, PreTrainedModel, PreTrainedTokenizer
+from datasets import Dataset
+from promptsource.templates import Template
+import numpy as np
 
 from src.preprocessing import preprocess_dataset
+from src.common import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +125,8 @@ def generate_predictions_choices(
         model,
         tokenizer,
         device,
-        choices
+        choices,
+        length_normalize=False
 ):
     """
     Generate predictions when using answer choices.
@@ -133,6 +138,7 @@ def generate_predictions_choices(
         tokenizer: Tokenizer to use.
         device: device to use.
         choices: Choices to use.
+        length_normalize: Use length normalization
 
     Returns:
         Path where predictions were saved.
@@ -148,14 +154,14 @@ def generate_predictions_choices(
     # may be OOV or have more than one token, thus we handle those cases by
     # simply tokenizing the choices.
     logger.info("Tokenizing choices for summing probabilities")
-    choice_tuples = []
+    choice_ids = []
     for choice in choices:
         choice_tokenized = tokenizer(choice, add_special_tokens=False)['input_ids']
 
         # We need two arrays: One to select the sequence number, and the second
         # to select the token idx.
-        choice_tuples.append(
-            (torch.arange(len(choice_tokenized)), torch.Tensor(choice_tokenized).long())
+        choice_ids.append(
+            torch.Tensor(choice_tokenized).long()
         )
 
     with torch.no_grad():
@@ -165,14 +171,18 @@ def generate_predictions_choices(
             generated = model(
                 input_ids=input_ids,
                 attention_mask=batch['attention_mask'].to(device),
-                labels=input_ids
+                labels=batch['labels'].to(device)
             )
 
             source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
             gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
             choice_probs = torch.zeros((len(gold), len(choices)))
-            for i, choice in enumerate(choice_tuples):
-                choice_probs[:, i] = generated.logits[:, choice[0], choice[1]].sum(-1)
+            for i, choice in enumerate(choice_ids):
+                # Sum the second and third dimensions so that we get a vector of
+                # shape (batch size,1)
+                choice_probs[:, i] = torch.sum(generated.logits[:, :, choice], (1, 2))
+                if length_normalize:
+                    choice_probs[:, i] /= len(choice)
 
             logger.debug("Saving JSON lines for batch")
             for i, target in enumerate(gold):
@@ -212,11 +222,23 @@ def evaluate(task, prediction_path, metrics, out_path):
 
     targets = []
     predictions = []
+    input_lens = []
+    choices_probs = {}
     pred_dicts = map(lambda l: json.loads(l), prediction_path.read_text('utf-8').splitlines(False))
     pbar = tqdm(desc="Reading")
     for line in pred_dicts:
-        targets.append(line['target'])
+        target = line['target']
+        targets.append(target)
         predictions.append(line['prediction'][0])
+        input_lens.append(len(line['input']))
+        if line['choice_logits']:
+            if target not in choices_probs:
+                choices_probs[target] = {}
+            for choice, prob in line['choice_logits'].items():
+                if choice not in choices_probs[target]:
+                    choices_probs[target][choice] = [prob]
+                else:
+                    choices_probs[target][choice].append(prob)
         pbar.update()
     pbar.close()
 
@@ -228,6 +250,22 @@ def evaluate(task, prediction_path, metrics, out_path):
             logger.info(f"{met_name:>20} {v:.3f}")
             final_metrics[k] = v
 
+    final_metrics['input_len/mean'] = np.mean(input_lens)
+    final_metrics['input_len/median'] = np.median(input_lens)
+    final_metrics['input_len/std'] = np.std(input_lens)
+
+    target_lens = list(map(len, targets))
+    final_metrics['target_len/mean'] = np.mean(target_lens)
+    final_metrics['target_len/median'] = np.median(target_lens)
+    final_metrics['target_len/std'] = np.std(target_lens)
+
+    if choices_probs:
+        for target, choice_prob in choices_probs.items():
+            for choice, prob_array in choice_prob.items():
+                final_metrics[f"choices/{target}={choice}:mean"] = np.mean(prob_array)
+                final_metrics[f"choices/{target}={choice}:std"] = np.std(prob_array)
+                final_metrics[f"choices/{target}={choice}:median"] = np.median(prob_array)
+
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")
     with metrics_file.open('w', encoding='utf-8') as fp:
@@ -237,17 +275,17 @@ def evaluate(task, prediction_path, metrics, out_path):
 
 
 def evaluate_dataset_with_prompt(
-        task,
-        dataset,
-        prompt,
-        model_name,
-        results_path,
-        batch_size,
-        use_base_model,
-        num_beams,
-        force_generation=False
+        task: str,
+        dataset: Dataset,
+        prompt: Template,
+        tokenizer: PreTrainedTokenizer,
+        model: PreTrainedModel,
+        results_path: Path,
+        batch_size: int,
+        num_beams: int,
+        force_generation: bool = False,
+        length_normalization: bool = False
 ):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenized, prompt = preprocess_dataset(
         task=task,
         dataset=dataset,
@@ -277,13 +315,8 @@ def evaluate_dataset_with_prompt(
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}")
     device = torch.device(0)
-    if use_base_model:
-        model_cls = T5Model
-    else:
-        model_cls = T5ForConditionalGeneration
-    model = model_cls.from_pretrained(model_name).to(device)
-    model.eval()
 
+    # TODO(gabeorlanski): Move generation into its own thing
     if choices is None or force_generation:
         result_file = generate_prediction_sequences(
             out_path=results_path,
@@ -304,7 +337,8 @@ def evaluate_dataset_with_prompt(
             model=model,
             device=device,
             tokenizer=tokenizer,
-            choices=choices
+            choices=choices,
+            length_normalize=length_normalization
         )
     logger.info("Finished generating the dataset with the prompt.")
     logger.info(f"Beginning evaluation of the predictions.")

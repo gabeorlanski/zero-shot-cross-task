@@ -4,6 +4,4 @@ defaults:
 name: wic
 verbose_name: WordsinContext
 parent_dataset: super_glue
-
-splits:
-  - validation
+category: Word Sense Disambiguation

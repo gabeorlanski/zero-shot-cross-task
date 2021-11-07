@@ -75,18 +75,20 @@ def test_generate_prediction_sequences(tmpdir):
 
 @pytest.mark.parametrize("choices", [["Yes", "Maybe", "No"], ["Answer 1", "Answer 2", "Answer 3"]],
                          ids=["Single Token", "Multi-Token"])
-def test_generate_prediction_choices(tmpdir, choices):
+@pytest.mark.parametrize("length_normalized", [True, False],
+                         ids=["W/Normalization", "No Normalization"])
+def test_generate_prediction_choices(tmpdir, choices, length_normalized):
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
-    def tok(p, h):
-        labels = tokenizer(h)
-        source = tokenizer(p)
+    def tok(p, h, l):
+        labels = tokenizer(choices[l])
+        source = tokenizer(f"{p} implies {h}")
         return {"labels": labels['input_ids'], "input_len": sum(source['attention_mask']), **source}
 
     ds = ds.map(  # type: ignore
         tok,
-        input_columns=['premise', 'hypothesis'],
+        input_columns=['premise', 'hypothesis', 'label'],
         remove_columns=ds.column_names
     ).sort("input_len", reverse=True)
 
@@ -100,7 +102,7 @@ def test_generate_prediction_choices(tmpdir, choices):
 
     data_loader = torch.utils.data.DataLoader(
         ds,
-        batch_size=1,
+        batch_size=16,
         collate_fn=collator,
         shuffle=False
     )
@@ -116,13 +118,15 @@ def test_generate_prediction_choices(tmpdir, choices):
     expected_logits = model(
         input_ids=single_batch['input_ids'],
         attention_mask=single_batch['attention_mask'],
-        labels=single_batch['input_ids']
+        labels=single_batch["labels"]
     ).logits
 
     expected_choice_probs = torch.zeros((expected_logits.shape[0], len(choices)))
     for choice, tokens in enumerate(choice_ids):
-        for i, t in enumerate(tokens):
-            expected_choice_probs[:, choice] += expected_logits[:, i, t]
+        for t in tokens:
+            expected_choice_probs[:, choice] += expected_logits[:, :, t].sum(-1)
+        if length_normalized:
+            expected_choice_probs[:, choice] /= len(tokens)
 
     res_path = evaluation.generate_predictions_choices(
         Path(tmpdir),
@@ -130,7 +134,8 @@ def test_generate_prediction_choices(tmpdir, choices):
         model,
         tokenizer,
         torch.device("cpu"),
-        choices=choices
+        choices=choices,
+        length_normalize=length_normalized
     )
 
     assert res_path.stem == "predictions"
@@ -149,10 +154,12 @@ def test_generate_prediction_choices(tmpdir, choices):
         assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
 
         for j, choice in enumerate(choices):
+            expected = expected_choice_probs[i, j].item()
             assert math.isclose(
                 result[i]['choice_logits'][choice],
-                expected_choice_probs[i, j].item()
-            )
+                expected,
+                rel_tol=1e-4
+            ), f"{result[i]['choice_logits'][choice]:.2f} != {expected:.2f}"
 
 
 def test_evaluate(tmpdir):
@@ -161,11 +168,20 @@ def test_evaluate(tmpdir):
     targets = "A B C D E F G".split()
     with pred_file.open('w', encoding='utf-8') as f:
         for p, t in zip(preds, targets):
-            f.write(json.dumps({"prediction": [p, "NONE"], "target": t}) + '\n')
+            f.write(json.dumps(
+                {"prediction": [p, "NONE"], "target": t, "input": t, "choice_logits": {}}) + '\n')
 
     res_file = evaluation.evaluate("test", pred_file, [], Path(tmpdir))
     assert res_file.stem == "metrics"
     assert res_file.exists
 
     result = json.loads(res_file.read_text('utf-8'))
-    assert result == evaluation.METRICS_DICT["Accuracy"](targets, preds)
+    assert result == {
+        'input_len/mean'   : 1.0,
+        'input_len/median' : 1.0,
+        'input_len/std'    : 0.0,
+        'target_len/mean'  : 1.0,
+        'target_len/median': 1.0,
+        'target_len/std'   : 0.0,
+        **evaluation.METRICS_DICT["Accuracy"](targets, preds)
+    }

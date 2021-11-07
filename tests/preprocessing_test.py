@@ -4,7 +4,6 @@ from datasets import load_dataset
 from pathlib import Path
 from unittest.mock import MagicMock
 import torch
-
 from promptsource.templates import DatasetTemplates
 import json
 
@@ -17,16 +16,16 @@ def test_preprocess_dataset():
     prompt_task = 'anli'
     prompt_name = 'can we infer'
 
-    result,used_prompt = preprocessing.preprocess_dataset(
+    task_prompt_templates = DatasetTemplates(prompt_task)
+    prompt = task_prompt_templates[prompt_name]
+    result, used_prompt = preprocessing.preprocess_dataset(
         "test",
         ds,
         tokenizer,
-        prompt_task,
-        prompt_name,
-        1
+        prompt=prompt,
+        batch_size=1,
+        num_proc=1
     )
-    task_prompt_templates = DatasetTemplates(prompt_task)
-    prompt = task_prompt_templates[prompt_name]
 
     assert used_prompt == prompt
 

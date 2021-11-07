@@ -7,7 +7,10 @@ model_name: "t5-small"
 batch_size: 8
 beams: 1
 force_generation: False
+disable_tracking: False
+length_normalization: False
+split: ???
 
 hydra:
   run:
-    dir: outputs/${task.name}
+    dir: outputs/${task.name}.${split}

@@ -4,6 +4,4 @@ defaults:
 name: cb
 verbose_name: CommitmentBank
 parent_dataset: super_glue
-
-splits:
-  - validation
+category: NLI

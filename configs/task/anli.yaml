@@ -2,7 +2,5 @@ defaults:
   - _self_
 
 name: anli
-splits:
-  - dev_r1
-  - dev_r2
-  - dev_r3
+category: NLI
+

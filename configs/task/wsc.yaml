@@ -4,6 +4,4 @@ defaults:
 name: wsc
 verbose_name: TheWinogradSchemaChallenge
 parent_dataset: super_glue
-
-splits:
-  - validation
+category: Coreference Resolution
