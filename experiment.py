@@ -146,7 +146,7 @@ def run(cfg: DictConfig):
         choices = prompt.get_fixed_answer_choices_list()
         if choices is not None:
             choice_count = len(choices)
-            choices = ", ".join(choices)
+            choices = ", ".join(sorted(choices))
         else:
             choice_count = 0
         run_cfg = {
