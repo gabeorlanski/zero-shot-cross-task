@@ -1,8 +1,0 @@
-defaults:
-  - _self_
-
-name: ag_news
-category:
-  - Classification
-  - Summarization
-

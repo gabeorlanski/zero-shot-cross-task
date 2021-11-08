@@ -1,16 +1,17 @@
 import json
-import torch
 import logging
-import hydra
-from promptsource.templates import DatasetTemplates
 import re
+
+import hydra
+import torch
 import wandb
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
+from promptsource.templates import DatasetTemplates
 from transformers import T5ForConditionalGeneration, T5Model, AutoTokenizer
-import numpy as np
-from src.experiment import experiment
-from src.common import flatten
 from unidecode import unidecode
+
+from src.common import flatten
+from src.experiment import experiment
 
 FILE_NAME_CLEANER = re.compile(r'[^\w]')
 DUPE_SPECIAL_CHARS = re.compile(r'([_\.\-])[_\.\-]+')
@@ -108,12 +109,21 @@ def run(cfg: DictConfig):
     model = model_cls.from_pretrained(cfg['model_name']).to(torch.device(0))
     model.eval()
     tokenizer = AutoTokenizer.from_pretrained(cfg['model_name'])
-
+    completed = 0
     for prompt_group, prompt_dict in prompts_to_use:
         prompt_name = prompt_dict['name']
 
         # Select a prompt by name
         prompt = task_prompt_templates[prompt_name]
+
+        if not prompt.answer_choices:
+            if cfg.get("length_normalization", False) or cfg.get("force_generation", False):
+                logger.warning(f"Skipping prompt {prompt.name} because it has"
+                               f" no choices and choice specific behaviors are"
+                               f" enabled.")
+                completed += 1
+                continue
+
         split_file_name = FILE_NAME_CLEANER.sub('_', unidecode(split)).replace('/', '_')
         group_name = FILE_NAME_CLEANER.sub('_', unidecode(verbose_name)).replace('/', '_')
 
@@ -212,6 +222,9 @@ def run(cfg: DictConfig):
             artifact.add_file(str(preds.resolve().absolute()))
             wandb_run.log_artifact(artifact)
             wandb_run.finish()
+
+        completed += 1
+        logger.info(f"Finished {completed}/{len(prompts_to_use)} prompts")
 
     logger.info(f"Finished all prompts and splits.")
 

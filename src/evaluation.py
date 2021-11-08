@@ -166,6 +166,7 @@ def generate_predictions_choices(
             source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
             gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
 
+            # TODO(gabeorlanski): Optimize this
             choices_by_example = []
             for i in range(len(gold)):
 
@@ -178,6 +179,10 @@ def generate_predictions_choices(
                 for j, choice in enumerate(choices):
                     choice_ids = tokenize_choice(choice)
                     choice_probs[j] = generated.logits[i, :, choice_ids].sum()
+
+                    # Choices can have different token lengths, which would
+                    # punish longer options, apply length normalization to fix
+                    # this.
                     if length_normalize:
                         choice_probs[j] /= len(choice_ids)
 
