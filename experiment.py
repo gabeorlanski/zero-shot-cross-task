@@ -130,6 +130,7 @@ def run(cfg: DictConfig):
 
         if cfg['length_normalization']:
             prompt_fn += ".LenNorm"
+            logger.info("Using Length Normalization")
         elif cfg['force_generation']:
             prompt_fn += ".FG"
 
