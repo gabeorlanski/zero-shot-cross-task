@@ -42,7 +42,12 @@ def run(cfg: DictConfig):
     task_name = unidecode(task_cfg['name'])
     verbose_name = task_cfg.get('verbose_name', task_name)
     dataset_name = task_cfg.get("parent_dataset", task_name)
-    category = task_cfg['category']
+    categories = task_cfg['category']
+    if isinstance(categories, str):
+        categories = [categories]
+    else:
+        # To remove the annoying ListConfig object.
+        categories = list(categories)
 
     logger.info(f"Starting experiment with task {verbose_name}")
 
@@ -76,7 +81,7 @@ def run(cfg: DictConfig):
                               for p_name in v if k != "DEFAULT"]
     for prompt in task_prompt_templates.all_template_names:
         if prompt not in prompt_names_in_groups:
-            prompt_groups["DEFAULT"].append({"name": prompt, "category": category})
+            prompt_groups["DEFAULT"].append({"name": prompt, "category": categories[0]})
 
     prompts_to_use = []
     for prompt_group, prompts in prompt_groups.items():
@@ -130,7 +135,7 @@ def run(cfg: DictConfig):
 
         experiment_name = f"{group_name}[{split_file_name}]:{prompt_fn}"
 
-        results_path = experiment(
+        ds_used, results_path = experiment(
             cfg=cfg,
             prompt=prompt,
             dataset_name=dataset_name,
@@ -143,16 +148,18 @@ def run(cfg: DictConfig):
             subset=task_name if dataset_name != task_name else None
         )
 
-        choices = prompt.get_fixed_answer_choices_list()
-        if choices is not None:
-            choice_count = len(choices)
-            choices = ", ".join(sorted(choices))
+        choice_count = max(map(len, ds_used['choices']))
+        choice_str = prompt.get_fixed_answer_choices_list()
+        if choice_str is not None:
+            has_fixed_choices = True
+            choice_str = ", ".join(sorted(choice_str))
         else:
-            choice_count = 0
+            has_fixed_choices = False
+            choice_str = f"{choice_count} MCQ" if choice_count > 0 else "N/A"
         run_cfg = {
             "choices_in_prompt"   : prompt.metadata.choices_in_prompt or False,
-            "choices"             : choices,
-            "has_fixed_choices"   : choices is not None,
+            "choices"             : choice_str,
+            "has_fixed_choices"   : has_fixed_choices,
             "original_task"       : prompt.metadata.original_task,
             "has_choices"         : prompt.answer_choices is not None,
             "prompt_task"         : prompt_task,
@@ -174,17 +181,17 @@ def run(cfg: DictConfig):
             assert preds.exists()
 
             tags = []
-            if run_cfg['has_fixed_choices']:
+            if has_fixed_choices:
                 tags.append("Fixed Choices")
-            elif run_cfg['has_choices']:
+            elif choice_count > 0:
                 tags.append("MCQ")
             else:
                 tags.append("Generation")
 
-            tags.append(f"PromptCat:{prompt_dict['category']}")
-            tags.append(category)
+            tags.append(f"PromptCat:{prompt_dict.get('category', categories[0])}")
+            tags.extend(categories)
 
-            run = wandb.init(
+            wandb_run = wandb.init(
                 project="zero-shot-eval",
                 job_type="eval",
                 entity="gabeorlanski",
@@ -196,14 +203,14 @@ def run(cfg: DictConfig):
             # for m in metrics.keys():
             #     if isinstance(metrics[m], list):
             #         metrics[m] = wandb.Histogram(metrics[m])
-            run.log(metrics)
+            wandb_run.log(metrics)
             # Use the ID as the artifact name to guarantee no errors.
             artifact = wandb.Artifact(
                 unidecode(f"{group_name}.{split_file_name}.{prompt.id}"),
                 type="predictions")
             artifact.add_file(str(preds.resolve().absolute()))
-            run.log_artifact(artifact)
-            run.finish()
+            wandb_run.log_artifact(artifact)
+            wandb_run.finish()
 
     logger.info(f"Finished all prompts and splits.")
 

@@ -18,7 +18,7 @@ def test_preprocess_dataset():
 
     task_prompt_templates = DatasetTemplates(prompt_task)
     prompt = task_prompt_templates[prompt_name]
-    result, used_prompt = preprocessing.preprocess_dataset(
+    result, original, used_prompt = preprocessing.preprocess_dataset(
         "test",
         ds,
         tokenizer,
@@ -29,10 +29,11 @@ def test_preprocess_dataset():
 
     assert used_prompt == prompt
 
-    def tok(ex):
+    def tok(ex, idx):
         prompt_str, target_str = prompt.apply(ex)
         labels_tokenized = tokenizer(target_str, max_length=256, truncation=True)
         out = {
+            "idx"       : idx,
             "labels"    : labels_tokenized['input_ids'],
             "labels_len": len(labels_tokenized['input_ids']),
             **tokenizer(prompt_str, max_length=1024, truncation=True)
@@ -42,7 +43,8 @@ def test_preprocess_dataset():
 
     expected_ds = ds.map(  # type:ignore
         tok,
-        remove_columns=ds.column_names
+        remove_columns=ds.column_names,
+        with_indices=True
     ).sort('input_len', reverse=True)
 
     for i, expected in enumerate(expected_ds):

@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+
+name: e2e_nlg_cleaned
+category:
+  - Conditonal Text Generation
+

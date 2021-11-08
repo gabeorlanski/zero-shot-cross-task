@@ -82,7 +82,7 @@ def experiment(
     else:
         dataset = load_dataset(dataset_name, split=split)
 
-    evaluate_dataset_with_prompt(
+    original_ds = evaluate_dataset_with_prompt(
         task=experiment_name,
         dataset=dataset,
         prompt=prompt,
@@ -92,6 +92,7 @@ def experiment(
         batch_size=cfg['batch_size'],
         num_beams=cfg['beams'],
         force_generation=cfg.get("force_generation", False),
-        length_normalization=cfg.get('length_normalization', False)
+        length_normalization=cfg.get('length_normalization', False),
+        num_proc=cfg.get('num_proc', 1)
     )
-    return results_path
+    return original_ds,results_path

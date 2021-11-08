@@ -4,6 +4,6 @@ defaults:
 name: copa
 verbose_name: ChoiceofPlausibleAlternatives
 parent_dataset: super_glue
+category:
+  - Sentence Completion
 
-splits:
-  - validation

@@ -1,0 +1,9 @@
+defaults:
+  - _self_
+
+name: hellaswag
+verbose_name: HellaSwag
+
+category:
+  - SentenceCompletion
+

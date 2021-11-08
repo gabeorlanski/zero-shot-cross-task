@@ -83,10 +83,13 @@ class PromptMapper(Registrable):
     @staticmethod
     def apply_prompt_to_example(prompt, example):
         prompt_str, output_str = prompt.apply(example)
-        return {"prompt": prompt_str, "output": output_str}
+        return {
+            "prompt" : prompt_str,
+            "output" : output_str,
+            "choices": prompt.get_answer_choices_list(example) or []
+        }
 
 
 @PromptMapper.register("default")
 class DefaultPromptMapper(PromptMapper):
     pass
-

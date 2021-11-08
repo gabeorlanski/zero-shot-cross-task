@@ -9,7 +9,7 @@ from transformers import DataCollatorForSeq2Seq, PreTrainedModel, PreTrainedToke
 from datasets import Dataset
 from promptsource.templates import Template
 import numpy as np
-
+from functools import lru_cache
 from src.preprocessing import preprocess_dataset
 from src.common import flatten
 
@@ -125,7 +125,7 @@ def generate_predictions_choices(
         model,
         tokenizer,
         device,
-        choices,
+        source_dataset,
         length_normalize=False
 ):
     """
@@ -137,32 +137,20 @@ def generate_predictions_choices(
         model: Model to use.
         tokenizer: Tokenizer to use.
         device: device to use.
-        choices: Choices to use.
         length_normalize: Use length normalization
 
     Returns:
         Path where predictions were saved.
     """
-    logger.info(f"Starting Generation")
+    logger.info(f"Generating Choices")
     pred_path = out_path.joinpath('predictions.jsonl')
     pred_file = pred_path.open('w', encoding="utf-8")
     data_iterator = tqdm(data_loader, desc="Generating")
-    if not isinstance(choices, list) or len(choices) < 2:
-        raise ValueError(f"Choices must be a list with at least two elements. got {choices}")
 
-    # We tokenize the choices here as there is a chance that the choice itself
-    # may be OOV or have more than one token, thus we handle those cases by
-    # simply tokenizing the choices.
-    logger.info("Tokenizing choices for summing probabilities")
-    choice_ids = []
-    for choice in choices:
-        choice_tokenized = tokenizer(choice, add_special_tokens=False)['input_ids']
-
-        # We need two arrays: One to select the sequence number, and the second
-        # to select the token idx.
-        choice_ids.append(
-            torch.Tensor(choice_tokenized).long()
-        )
+    # Cache in case we are using fixed choices.
+    @lru_cache(maxsize=5)
+    def tokenize_choice(choice_str):
+        return tokenizer(choice_str, add_special_tokens=False)['input_ids']
 
     with torch.no_grad():
         for batch in data_iterator:
@@ -173,27 +161,43 @@ def generate_predictions_choices(
                 attention_mask=batch['attention_mask'].to(device),
                 labels=batch['labels'].to(device)
             )
+            ex_idx = batch['idx']
 
             source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
             gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
-            choice_probs = torch.zeros((len(gold), len(choices)))
-            for i, choice in enumerate(choice_ids):
-                # Sum the second and third dimensions so that we get a vector of
-                # shape (batch size,1)
-                choice_probs[:, i] = torch.sum(generated.logits[:, :, choice], (1, 2))
-                if length_normalize:
-                    choice_probs[:, i] /= len(choice)
+
+            choices_by_example = []
+            for i in range(len(gold)):
+
+                # Get the choices for this sample
+                choices = source_dataset[ex_idx[i].item()]['choices']
+                choice_probs = torch.zeros(len(choices))
+
+                # For each choice, sum up the probabilities of it being
+                # generated.
+                for j, choice in enumerate(choices):
+                    choice_ids = tokenize_choice(choice)
+                    choice_probs[j] = generated.logits[i, :, choice_ids].sum()
+                    if length_normalize:
+                        choice_probs[j] /= len(choice_ids)
+
+                choices_by_example.append(
+                    {c: p.item() for c, p in zip(choices, choice_probs)}
+                )
 
             logger.debug("Saving JSON lines for batch")
             for i, target in enumerate(gold):
-                ex_choice_prob = choice_probs[i, :]
-                prediction_choice = choices[ex_choice_prob.argmax()]
+                example_choice_probs = choices_by_example[i]
+                prediction_choice = max(
+                    example_choice_probs.keys(),
+                    key=lambda x: example_choice_probs[x]
+                )
 
                 pred_file.write(serialize_prediction(
                     [prediction_choice],
                     target,
                     source[i],
-                    {c: p.item() for c, p in zip(choices, ex_choice_prob)}
+                    example_choice_probs
                 ) + '\n')
 
     data_iterator.close()
@@ -259,13 +263,6 @@ def evaluate(task, prediction_path, metrics, out_path):
     final_metrics['target_len/median'] = np.median(target_lens)
     final_metrics['target_len/std'] = np.std(target_lens)
 
-    if choices_probs:
-        for target, choice_prob in choices_probs.items():
-            for choice, prob_array in choice_prob.items():
-                final_metrics[f"choices/{target}={choice}:mean"] = np.mean(prob_array)
-                final_metrics[f"choices/{target}={choice}:std"] = np.std(prob_array)
-                final_metrics[f"choices/{target}={choice}:median"] = np.median(prob_array)
-
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")
     with metrics_file.open('w', encoding='utf-8') as fp:
@@ -284,18 +281,26 @@ def evaluate_dataset_with_prompt(
         batch_size: int,
         num_beams: int,
         force_generation: bool = False,
-        length_normalization: bool = False
+        length_normalization: bool = False,
+        num_proc: int = 1
 ):
-    tokenized, prompt = preprocess_dataset(
+    tokenized, original, prompt = preprocess_dataset(
         task=task,
         dataset=dataset,
         tokenizer=tokenizer,
-        prompt=prompt
+        prompt=prompt,
+        num_proc=num_proc
     )
 
-    # TODO(gabeorlanski): Make this work for non-fixed choice
-    choices = prompt.get_fixed_answer_choices_list()
+    choices = prompt.answer_choices
     logger.info(f"Choices found: {choices}")
+    max_choices_found = max(map(len, original['choices']))
+    min_choices_found = min(map(len, original['choices']))
+    logger.info(f"Max # Choices found: {max_choices_found}")
+    logger.info(f"Min # Choices found: {min_choices_found}")
+    if max_choices_found != min_choices_found:
+        logger.error("Variable number of choices found across examples. This is not supported.")
+        raise ValueError("Variable number of choices found across examples. This is not supported.")
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
@@ -337,7 +342,7 @@ def evaluate_dataset_with_prompt(
             model=model,
             device=device,
             tokenizer=tokenizer,
-            choices=choices,
+            source_dataset=original,
             length_normalize=length_normalization
         )
     logger.info("Finished generating the dataset with the prompt.")
@@ -348,3 +353,4 @@ def evaluate_dataset_with_prompt(
         metrics=prompt.metadata.metrics or ["Accuracy"],
         out_path=results_path
     )
+    return original

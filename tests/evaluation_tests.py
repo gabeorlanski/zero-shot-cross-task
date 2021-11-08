@@ -78,18 +78,26 @@ def test_generate_prediction_sequences(tmpdir):
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
 def test_generate_prediction_choices(tmpdir, choices, length_normalized):
-    ds = load_dataset("anli", split="train_r1[:16]")
+    original_dataset = load_dataset("anli", split="train_r1[:16]").map(
+        lambda d: {"choices": choices, **d}
+    )
+
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
-    def tok(p, h, l):
-        labels = tokenizer(choices[l])
-        source = tokenizer(f"{p} implies {h}")
-        return {"labels": labels['input_ids'], "input_len": sum(source['attention_mask']), **source}
+    def tok(p, h, label, ex_idx):
 
-    ds = ds.map(  # type: ignore
+        labels = tokenizer(choices[label])
+        source = tokenizer(f"{p} implies {h}")
+        return {
+            "idx"      : ex_idx, "labels": labels['input_ids'],
+            "input_len": sum(source['attention_mask']), **source
+        }
+
+    ds = original_dataset.map(  # type: ignore
         tok,
         input_columns=['premise', 'hypothesis', 'label'],
-        remove_columns=ds.column_names
+        remove_columns=original_dataset.column_names,
+        with_indices=True
     ).sort("input_len", reverse=True)
 
     collator = DataCollatorForSeq2Seq(
@@ -134,7 +142,7 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized):
         model,
         tokenizer,
         torch.device("cpu"),
-        choices=choices,
+        source_dataset=original_dataset,
         length_normalize=length_normalized
     )
 

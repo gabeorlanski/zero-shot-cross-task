@@ -1,7 +1,0 @@
-defaults:
-  - _self_
-
-name: wsc
-verbose_name: TheWinogradSchemaChallenge
-parent_dataset: super_glue
-category: Coreference Resolution

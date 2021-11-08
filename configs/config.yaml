@@ -9,6 +9,7 @@ beams: 1
 force_generation: False
 disable_tracking: False
 length_normalization: False
+num_proc: 4
 split: ???
 
 hydra:
