@@ -58,7 +58,7 @@ class PromptMapper(Registrable):
 
     @staticmethod
     def apply_prompt_to_batch(prompt, batch):
-        out = {"prompt": [], "output": []}
+        out = {"prompt": [], "output": [], "choices": []}
         example_num = 0
         keys = list(batch.keys())
         while True:
@@ -76,6 +76,7 @@ class PromptMapper(Registrable):
             prompt_str, output_str = prompt.apply(example)
             out['prompt'].append(prompt_str)
             out['output'].append(output_str)
+            out["choices"].append(prompt.get_answer_choices_list(example) or [])
             example_num += 1
 
         return out
