@@ -148,7 +148,7 @@ def run_experiments(
         # Some of the template names have absurd amount of bad characters.
         # So to remove them we need to first unidecode it, then clean it,
         # then remove duplicate characters
-        prompt_fn = sanitize_name(prompt.name)
+        prompt_fn = prompt_dict['name']
         if prompt_group != DEFAULT_PROMPT_GROUP:
             prompt_fn = f"{prompt_group}.{prompt_fn}"
 
@@ -202,7 +202,6 @@ def run_experiments(
                 group_name=wandb_group_name,
                 name=prompt_fn,
                 metrics_path=results_path.joinpath("metrics.json"),
-                artifact_name=unidecode(f"{group_name}.{split_file_name}.{prompt.id}"),
                 predictions_path=results_path.joinpath("predictions.jsonl")
             )
 

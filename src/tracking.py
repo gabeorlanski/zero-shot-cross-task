@@ -6,6 +6,7 @@ from src.common import flatten
 from omegaconf import OmegaConf
 from promptsource.templates import Template
 import wandb
+import pandas as pd
 
 
 def get_prompt_info_for_wandb(
@@ -45,7 +46,7 @@ def get_prompt_info_for_wandb(
     original_choices = prompt_metadata.get("original_choices", prompt.answer_choices)
     prompt_cfg['uses_original_choices'] = prompt.answer_choices == original_choices
     prompt_cfg['original_choices'] = original_choices
-    prompt_cfg['original_task'] = prompt_metadata['original_task']
+    prompt_cfg['original_task'] = list(prompt_metadata['original_task'])
 
     tags = [
         f"PromptCat:{prompt_cfg['prompt_category']}",
@@ -89,6 +90,23 @@ def create_run_cfg(
     return tags, run_cfg
 
 
+def create_predictions_df(predictions_path):
+    records = []
+    for line in predictions_path.read_text('utf-8').splitlines(False):
+        d = json.loads(line)
+
+        if len(d['prediction']) > 1:
+            pred, *others = d['prediction']
+        else:
+            pred = d['prediction'][0]
+            others = []
+
+        d['prediction'] = pred
+        d['other_beams'] = others
+        records.append(d)
+    return pd.DataFrame.from_records(records).sort_values(by=['id'])
+
+
 def save_run_to_wandb(
         run_cfg,
         tags,
@@ -96,7 +114,6 @@ def save_run_to_wandb(
         group_name,
         name,
         metrics_path,
-        artifact_name,
         predictions_path
 ):
     assert metrics_path.exists()
@@ -122,10 +139,7 @@ def save_run_to_wandb(
     )
     metrics = json.loads(metrics_path.read_text('utf-8'))
     wandb_run.log(metrics)
-    # Use the ID as the artifact name to guarantee no errors.
-    artifact = wandb.Artifact(
-        artifact_name,
-        type="predictions")
-    artifact.add_file(str(predictions_path.resolve().absolute()))
-    wandb_run.log_artifact(artifact)
+
+    pred_table = wandb.Table(dataframe=create_predictions_df(predictions_path))
+    wandb_run.log({"predictions": pred_table})
     wandb_run.finish()

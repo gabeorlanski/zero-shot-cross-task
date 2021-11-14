@@ -57,9 +57,17 @@ def run(cfg: DictConfig):
     logger.info(f"Starting experiment with task {verbose_name}")
     logger.info(f"Using Split {split}")
 
-    prompts_to_use = load_prompts(
-        prompt_task, categories
-    )
+    if not cfg.get('use_general_prompts'):
+        prompts_to_use = load_prompts(
+            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']
+        )
+    else:
+        prompts_to_use = load_general_prompts(
+            prompt_dir=PROJECT_ROOT.joinpath(cfg["general_prompts"]['dir']),
+            prompt_cfg=task_cfg['general_prompts'],
+            category_filter=cfg['general_prompts']['category_filter'],
+            prompt_filter_kwargs=cfg['prompt_filter']
+        )
     if cfg["debug"]:
         logger.warning(f"Debugging enbaled, only using a single prompt")
         prompts_to_use = prompts_to_use[:1]

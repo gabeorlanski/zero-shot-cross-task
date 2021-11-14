@@ -36,6 +36,7 @@ METRICS_DICT = {
 
 
 def serialize_prediction(
+        idx,
         prediction,
         target,
         input_seq,
@@ -45,6 +46,7 @@ def serialize_prediction(
     Helper function to turn predictions into writeable string.
 
     Args:
+        idx (int): id of the prediction
         prediction (list): List of prediction strings.
         target (str): The target string.
         input_seq (str): The input string.
@@ -52,6 +54,7 @@ def serialize_prediction(
 
     """
     return json.dumps({
+        "id"           : idx,
         "prediction"   : prediction,
         "target"       : target,
         "input"        : input_seq,
@@ -98,6 +101,8 @@ def generate_prediction_sequences(
             **generator_kwargs
         )
 
+        batch_indices = batch['idx']
+
         preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
         source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
         gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
@@ -110,6 +115,7 @@ def generate_prediction_sequences(
         logger.debug("Saving JSON lines for batch")
         for i, target in enumerate(gold):
             pred_file.write(serialize_prediction(
+                batch_indices[i].item(),
                 preds[i * num_beams:(i + 1) * num_beams],
                 target,
                 source[i]
@@ -199,6 +205,7 @@ def generate_predictions_choices(
                 )
 
                 pred_file.write(serialize_prediction(
+                    ex_idx[i].item(),
                     [prediction_choice],
                     target,
                     source[i],

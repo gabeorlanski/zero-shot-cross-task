@@ -14,10 +14,12 @@ split: ???
 
 debug: False
 use_general_prompts: False
-
+general_prompts:
+  dir: prompts
+  category_filter: null
 prompt_filter:
-  name: null
-  choice: null
+  name_list: null
+  choice_list: null
   choices_in_prompt: null
   original_task: null
 

@@ -75,7 +75,7 @@ templates:
     reference: Adapted from Webson & Pavlick 2021
   52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59: !Template
     answer_choices: True ||| Inconclusive ||| False
-    id: bab86d5a-4f9c-40db-b619-a7b7d5cae681
+    id: 52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59
     jinja: 'Take the following as truth: {{premise}}
         Then the following statement: "{{hypothesis}}" is {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
@@ -97,9 +97,9 @@ templates:
       original_task: true
     name: must be true
     reference: Adapted v0.1
-  c4ed37ae-d7d7-4197-a725-ef2152fa3b1f: !Template
+  916c4db4-d9c7-40f2-8d29-44cf58aabe9c: !Template
     answer_choices: Yes ||| Maybe ||| No
-    id: c4ed37ae-d7d7-4197-a725-ef2152fa3b1f
+    id: 916c4db4-d9c7-40f2-8d29-44cf58aabe9c
     jinja: 'Suppose {{premise}} Can we infer that "{{hypothesis}}"? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}?
         ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
