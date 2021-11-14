@@ -1,0 +1,122 @@
+name: 3 Choice Entailment
+short_name: 3CE
+type: NLI
+file_name: three_choice_entailment.yaml
+choice_chount: 3
+possible_answer_choices:
+  - Yes ||| Maybe ||| No
+  - Correct ||| Inconclusive ||| Incorrect
+  - True ||| Inconclusive ||| False
+  - True ||| Neither ||| False
+  - Guaranteed ||| Possible ||| Impossible
+  - Always ||| Sometimes ||| Never
+prompt_metadata:
+  9532d63e-7996-4cee-a1e3-014fb19802e5:
+    original_choices: Correct ||| Inconclusive ||| Incorrect
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  e2433288-fdd8-4bd1-8eca-a2739b1d3101:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  747eb8cc-d05e-4252-86f5-a9bec7c465c9:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  327df604-0115-4eea-8099-735a9415dafa:
+    original_choices: True ||| Neither ||| False
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  5333f5e8-d1cc-4bdd-b1db-c33c20dc0fd8:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  56baf6a1-6dc7-4568-bae0-261f3845c1cb:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59:
+    original_choices: True ||| Inconclusive ||| False
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  f89113db-295d-4378-b42d-54e6fd6134e7:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  916c4db4-d9c7-40f2-8d29-44cf58aabe9c:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  131a1f8c-d689-436f-981f-ac367e599ab4:
+    original_choices: Guaranteed ||| Possible ||| Impossible
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  fb4ef6a6-d56d-4bfe-97be-d2b4fa7e9e95:
+    original_choices: Always ||| Sometimes ||| Never
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  524842e9-5d2e-4659-9b60-9b133ad408f1:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+    category: Fixed Choice
+  8412569c-ef1d-453d-8517-093dfd493468:
+    original_choices: True ||| Inconclusive ||| False
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  00910728-adbd-4dc4-b883-e3b4f0645a6a:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+  390a0fe5-4713-4ded-8037-db26768ba503:
+    original_choices: Always ||| Sometimes ||| Never
+    original_task:
+      - anli
+      - cb
+    category: Fixed Choice
+  abb417a5-1142-4452-9a94-09a1c56bdd34:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - anli
+      - cb
+    category: Multiple Choice
+  6a70ebde-5287-4448-a39d-8d84826b9cb5:
+    original_choices: Always ||| Sometimes ||| Never
+    original_task:
+      - anli
+      - cb
+    category: Multiple Choice
+  5a65c67f-ec9c-44f1-a610-63a7d1d016d0:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - quail
+    category: Multiple Choice
+  7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - quail
+    category: Open Ended

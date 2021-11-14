@@ -12,6 +12,15 @@ length_normalization: False
 num_proc: 4
 split: ???
 
+debug: False
+use_general_prompts: False
+
+prompt_filter:
+  name: null
+  choice: null
+  choices_in_prompt: null
+  original_task: null
+
 hydra:
   run:
     dir: outputs/${task.name}.${split}

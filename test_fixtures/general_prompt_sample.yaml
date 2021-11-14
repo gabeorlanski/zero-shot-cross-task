@@ -1,0 +1,68 @@
+templates:
+  9532d63e-7996-4cee-a1e3-014fb19802e5: !Template
+    answer_choices: Correct ||| Inconclusive ||| Incorrect
+    id: 9532d63e-7996-4cee-a1e3-014fb19802e5
+    jinja: '{{premise}} Using only the above description and what you know about the
+      world, "{{hypothesis}}" is definitely {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? |||
+      {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: MNLI crowdsource
+    reference: Adapted from Williams et al. 2018's instructions to crowdsourcing workers.
+  e2433288-fdd8-4bd1-8eca-a2739b1d3101: !Template
+    answer_choices: Yes ||| Maybe ||| No
+    id: e2433288-fdd8-4bd1-8eca-a2739b1d3101
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: should assume
+    reference: Adapted from Webson & Pavlick 2021
+  5a65c67f-ec9c-44f1-a610-63a7d1d016d0: !Template
+    answer_choices: Always ||| Sometimes ||| Never
+    id: 5a65c67f-ec9c-44f1-a610-63a7d1d016d0
+    jinja: '{{premise}}
+          According to the above context, answer the following question.
+
+          {{hypothesis}}
+
+          A: {{ answer_choices[0] }}
+
+          B: {{ answer_choices[1] }}
+
+          C: {{ answer_choices[2] }}
+
+          |||
+
+          {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: false
+    name: context_description_question_text_MCQ
+    reference: ''
+  7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df: !Template
+    answer_choices: True ||| Inconclusive ||| False
+    id: 7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df
+    jinja: '{{premise}}
+          According to the above context, answer the following question.
+
+          {{hypothesis}}
+
+          |||
+
+          {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: false
+    name: context_description_question_text
+    reference: ''

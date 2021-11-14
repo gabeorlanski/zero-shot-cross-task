@@ -1,8 +1,23 @@
 import collections
+import logging
+from pathlib import Path
+import re
+from unidecode import unidecode
 
 __all__ = [
-    "flatten"
+    "flatten",
+    "PROJECT_ROOT",
+    "FILE_NAME_CLEANER",
+    "DUPE_SPECIAL_CHARS",
+    "sanitize_name"
 ]
+logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
+
+FILE_NAME_CLEANER = re.compile(r'[^\w]')
+DUPE_SPECIAL_CHARS = re.compile(r'([_\.\-])[_\.\-]+')
+
 
 def flatten(d, parent_key='', sep='_'):
     items = []
@@ -13,3 +28,8 @@ def flatten(d, parent_key='', sep='_'):
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+def sanitize_name(name: str) -> str:
+    cleaned = FILE_NAME_CLEANER.sub('_', unidecode(name).replace('/', '_'))
+    return DUPE_SPECIAL_CHARS.sub(r'\1', cleaned)

@@ -1,6 +1,6 @@
 defaults:
   - _self_
-
+  - ../general_prompts@general_prompts: three_choice_entailment
 name: cb
 verbose_name: CommitmentBank
 parent_dataset: super_glue

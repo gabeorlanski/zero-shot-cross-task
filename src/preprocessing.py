@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def preprocess_dataset(task, dataset, tokenizer, prompt, num_proc=4,
                        batch_size=1):
-    prompt_mapper = PromptMapper.by_name("default")(
+    prompt_mapper = PromptMapper(
         prompt,
         num_proc=num_proc,
         batch_size=batch_size
