@@ -1,5 +1,10 @@
 #!/bin/bash
 # Run the experiments
+rm -rf outputs/cb.validation
+rm -rf outputs/anli.dev_r1
+rm -rf outputs/anli.dev_r2
+rm -rf outputs/anli.dev_r3
+
 python experiment.py task=cb +split=validation \
   num_proc=4 \
   debug=False \
