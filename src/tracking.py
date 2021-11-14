@@ -101,6 +101,13 @@ def create_predictions_df(predictions_path):
             pred = d['prediction'][0]
             others = []
 
+        choice_logits = d.pop('choice_logits')
+        d['choice_count'] = len(choice_logits)
+        if choice_logits:
+            for i, v in enumerate(list(choice_logits.keys())):
+                d[f"choice_{i}"] = v
+                d[f"choice_{i}_logit"] = choice_logits[v] if choice_logits else None
+
         d['prediction'] = pred
         d['other_beams'] = others
         records.append(d)

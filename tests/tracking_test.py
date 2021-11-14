@@ -23,7 +23,7 @@ def test_create_predictions_df(tmpdir):
                 "id"           : 23, "prediction": [",,,,,,,, that's very nice.,,,,,"],
                 "target"       : "No",
                 "input"        : "Abc",
-                "choice_logits": {}
+                "choice_logits": {"A": 1, "B": 2, "C": 3}
             },
             {
                 "id"           : 50, "prediction": [
@@ -50,12 +50,18 @@ def test_create_predictions_df(tmpdir):
 
     expected = pd.DataFrame.from_records(
         [{
-            "id"           : 23,
-            "prediction"   : ",,,,,,,, that's very nice.,,,,,",
-            "other_beams"  : [],
-            "target"       : "No",
-            "input"        : "Abc",
-            "choice_logits": {}
+            "id"            : 23,
+            "prediction"    : ",,,,,,,, that's very nice.,,,,,",
+            "other_beams"   : [],
+            "target"        : "No",
+            "input"         : "Abc",
+            "choice_count"  : 3,
+            "choice_0"      : "A",
+            "choice_1"      : "B",
+            "choice_2"      : "C",
+            "choice_0_logit": 1,
+            "choice_1_logit": 2,
+            "choice_2_logit": 3,
         }, {
             "id"           : 50,
             "prediction"   :
@@ -63,7 +69,7 @@ def test_create_predictions_df(tmpdir):
             "other_beams"  : ["C"],
             "target"       : "No",
             "input"        : "DEF",
-            "choice_logits": {}
+            "choice_count": 0,
         }, {
             "id"           : 35,
             "prediction"   :
@@ -72,7 +78,7 @@ def test_create_predictions_df(tmpdir):
             "other_beams"  : [],
             "target"       : "Yes",
             "input"        : "GHI",
-            "choice_logits": {}
+            "choice_count": 0,
         }
         ]
     )
