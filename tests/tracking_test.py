@@ -20,8 +20,8 @@ def test_create_predictions_df(tmpdir):
     with pred_path.open('w', encoding='utf-8') as f:
         data = [
             {
-                "id"           : 23, "prediction": [",,,,,,,, that's very nice.,,,,,"],
-                "target"       : "No",
+                "id"           : 23, "prediction": ["A"],
+                "target"       : "B",
                 "input"        : "Abc",
                 "choice_logits": {"A": 1, "B": 2, "C": 3}
             },
@@ -47,38 +47,49 @@ def test_create_predictions_df(tmpdir):
             f.write(json.dumps(l) + "\n")
 
     result = tracking.create_predictions_df(pred_path)
+    from scipy.special import softmax
+    normalized = softmax([1, 2, 3])
 
     expected = pd.DataFrame.from_records(
         [{
-            "id"            : 23,
-            "prediction"    : ",,,,,,,, that's very nice.,,,,,",
-            "other_beams"   : [],
-            "target"        : "No",
-            "input"         : "Abc",
-            "choice_count"  : 3,
-            "choice_0"      : "A",
-            "choice_1"      : "B",
-            "choice_2"      : "C",
-            "choice_0_logit": 1,
-            "choice_1_logit": 2,
-            "choice_2_logit": 3,
+            "id"                 : 23,
+            "prediction"         : "A",
+            "other_beams"        : [],
+            "target"             : "B",
+            "input"              : "Abc",
+            "choice_count"       : 3,
+            "choice_0"           : "A",
+            "choice_1"           : "B",
+            "choice_2"           : "C",
+            "c0_logit"           : 1,
+            "c1_logit"           : 2,
+            "c2_logit"           : 3,
+            "c0_logit_normalized": normalized[0],
+            "c1_logit_normalized": normalized[1],
+            "c2_logit_normalized": normalized[2],
+            "target_id"          : 1,
+            "pred_id"            : 0,
+            "correct"            : False
+
         }, {
-            "id"           : 50,
-            "prediction"   :
+            "id"          : 50,
+            "prediction"  :
                 ",,, I don't think the judge should just make the decision alone, but I don't think the judge should just make the decision",
-            "other_beams"  : ["C"],
-            "target"       : "No",
-            "input"        : "DEF",
+            "other_beams" : ["C"],
+            "target"      : "No",
+            "input"       : "DEF",
             "choice_count": 0,
+            "correct"     : False
         }, {
-            "id"           : 35,
-            "prediction"   :
+            "id"          : 35,
+            "prediction"  :
                 ", uh, and it's interesting because, uh, so many problems, I work in a high school, are that kids don"
             ,
-            "other_beams"  : [],
-            "target"       : "Yes",
-            "input"        : "GHI",
+            "other_beams" : [],
+            "target"      : "Yes",
+            "input"       : "GHI",
             "choice_count": 0,
+            "correct"     : False
         }
         ]
     )

@@ -6,6 +6,7 @@ from src.common import flatten
 from omegaconf import OmegaConf
 from promptsource.templates import Template
 import wandb
+from scipy.special import softmax
 import pandas as pd
 
 
@@ -103,10 +104,21 @@ def create_predictions_df(predictions_path):
 
         choice_logits = d.pop('choice_logits')
         d['choice_count'] = len(choice_logits)
+
+        d['pred_id'] = None
+        d['target_id'] = None
         if choice_logits:
-            for i, v in enumerate(list(choice_logits.keys())):
+            normalized = softmax(list(choice_logits.values()))
+            for i, v in enumerate(sorted(list(choice_logits.keys()))):
                 d[f"choice_{i}"] = v
-                d[f"choice_{i}_logit"] = choice_logits[v] if choice_logits else None
+                d[f"c{i}_logit"] = choice_logits[v] if choice_logits else None
+                d[f"c{i}_logit_normalized"] = normalized[i] if len(normalized)>0 else None
+                if v == pred:
+                    d['pred_id'] = i
+                if v == d['target']:
+                    d['target_id'] = i
+
+        d['correct'] = pred == d['target']
 
         d['prediction'] = pred
         d['other_beams'] = others
