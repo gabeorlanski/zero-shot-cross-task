@@ -6,19 +6,19 @@ python experiment.py task=cb +split=validation \
   use_general_prompts=True \
   model_name="bigscience/T0_3B"
 
-python experiment.py task=dev_r1 +split=val \
+python experiment.py task=anli +split=dev_r1 \
   num_proc=4 \
   debug=False \
   use_general_prompts=True \
   model_name="bigscience/T0_3B"
 
-python experiment.py task=dev_r2 +split=val \
+python experiment.py task=anli +split=dev_r2 \
   num_proc=4 \
   debug=False \
   use_general_prompts=True \
   model_name="bigscience/T0_3B"
 
-python experiment.py task=dev_r3 +split=val \
+python experiment.py task=anli +split=dev_r3 \
   num_proc=4 \
   debug=False \
   use_general_prompts=True \

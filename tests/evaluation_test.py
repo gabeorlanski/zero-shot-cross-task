@@ -13,15 +13,18 @@ def test_generate_prediction_sequences(tmpdir):
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
-    def tok(p, h):
+    def tok(p, h, ex_idx):
         labels = tokenizer(h)
         source = tokenizer(p)
-        return {"labels": labels['input_ids'], "input_len": sum(source['attention_mask']), **source}
+        return {"idx"      : ex_idx, "labels": labels['input_ids'],
+                "input_len": sum(source['attention_mask']), **source
+        }
 
     ds = ds.map(  # type: ignore
         tok,
         input_columns=['premise', 'hypothesis'],
-        remove_columns=ds.column_names
+        remove_columns=ds.column_names,
+        with_indices=True
     ).sort("input_len")
 
     collator = DataCollatorForSeq2Seq(

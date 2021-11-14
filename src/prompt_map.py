@@ -90,8 +90,8 @@ class PromptMapper:
     def apply_prompt_to_example(prompt, example):
         prompt_str, output_str = prompt.apply(example)
         return {
-            "prompt" : prompt_str,
-            "output" : output_str,
+            "prompt": prompt_str,
+            "output": output_str,
             "choices": prompt.get_answer_choices_list(example) or []
         }
 
@@ -194,14 +194,17 @@ def load_general_prompts(
         if category_filter and current_prompt_metadata['category'] not in category_filter:
             logger.info(f"Skipping '{prompt.name}' as it is not in filtered category")
 
-        for i, choices in enumerate(prompt_cfg['possible_answer_choices']):
+        for choices in prompt_cfg['possible_answer_choices']:
             # Deepcopy to avoid saving a mutable object that will be incorrect
             new_prompt = deepcopy(prompt)
             new_prompt.answer_choices = choices
             out.append((
                 prompt_cfg['short_name'],
                 new_prompt,
-                {"name": f"{sanitize_name(prompt.name)}.{i}", **current_prompt_metadata}
+                {
+                    "name": f"{sanitize_name(prompt.name)}.{''.join(choices.split('|||'))}",
+                    **current_prompt_metadata
+                }
             ))
 
     if not out:

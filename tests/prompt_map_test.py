@@ -148,5 +148,9 @@ def test_load_general_prompts(tmpdir):
         for i, x in enumerate(list(result[k].values())):
             c, p, m = x
             assert c == prompt_cfg['short_name']
-            assert m == {"name": f"{sanitize_name(prompt.name)}.{i}", **v}
-            assert p.answer_choices == prompt_cfg['possible_answer_choices'][i]
+            answer_choices = prompt_cfg['possible_answer_choices'][i]
+            assert m == {
+                "name": f"{sanitize_name(prompt.name)}.{''.join(answer_choices.split('|||'))}",
+                **v
+            }
+            assert p.answer_choices == answer_choices
