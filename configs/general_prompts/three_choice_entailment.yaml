@@ -10,6 +10,9 @@ possible_answer_choices:
   - True ||| Neither ||| False
   - Guaranteed ||| Possible ||| Impossible
   - Always ||| Sometimes ||| Never
+  - Entailment ||| Neutral ||| Contradiction
+  - Supports ||| Neither ||| Contradicts
+  - Imply ||| Neither ||| Contradict
 prompt_metadata:
   9532d63e-7996-4cee-a1e3-014fb19802e5:
     original_choices: Correct ||| Inconclusive ||| Incorrect
@@ -119,4 +122,33 @@ prompt_metadata:
     original_choices: Yes ||| Maybe ||| No
     original_task:
       - quail
+    category: Open Ended
+  074de970-f1fd-4793-923e-88299502e2f0:
+    original_choices: Entailment ||| Neutral ||| Contradiction
+    original_task:
+      - ax
+  32ae8811-2a1f-4027-96e8-725ecd08bba1:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - ax
+    category: Multiple Choice
+  3f6b9de8-616b-4a43-a077-e205a4c33a28:
+    original_choices: Yes ||| Maybe ||| No
+    original_task:
+      - ax
+    category: Fixed Choice
+  76803347-b0fd-4dd6-8a04-ab1a6ab314d5:
+    original_choices: Imply ||| Neither ||| Contradict
+    original_task:
+      - ax
+    category: Fixed Choice
+  8ff27ccf-21d3-45c2-afe4-4531309dfb9f:
+    original_choices: Supports ||| Neither ||| Contradicts
+    original_task:
+      - ax
+    category: Fixed Choice
+  b5e0410e-ca91-472b-b00b-51e9cb7604c8:
+    original_choices: Entailment ||| Neutral ||| Contradiction
+    original_task:
+      - custom
     category: Open Ended

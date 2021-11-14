@@ -1,0 +1,258 @@
+templates:
+  9532d63e-7996-4cee-a1e3-014fb19802e5: !Template
+    answer_choices: Correct ||| Incorrect
+    id: 9532d63e-7996-4cee-a1e3-014fb19802e5
+    jinja: '{{premise}} Using only the above description and what you know about the
+      world, "{{hypothesis}}" is definitely {{ answer_choices[0] }} or {{ answer_choices[1] }}? |||
+      {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: MNLI crowdsource
+    reference: Adapted from Williams et al. 2018's instructions to crowdsourcing workers.
+  e2433288-fdd8-4bd1-8eca-a2739b1d3101: !Template
+    answer_choices: Yes ||| No
+    id: e2433288-fdd8-4bd1-8eca-a2739b1d3101
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: should assume
+    reference: Adapted from Webson & Pavlick 2021
+  747eb8cc-d05e-4252-86f5-a9bec7c465c9: !Template
+    answer_choices: Yes ||| No
+    id: 747eb8cc-d05e-4252-86f5-a9bec7c465c9
+    jinja: 'Given that {{premise}} Does it follow that {{hypothesis}} {{ answer_choices[0] }} or {{ answer_choices[1] }}?
+      ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: does it follow that
+    reference: Adapted from v0.1
+  327df604-0115-4eea-8099-735a9415dafa: !Template
+    answer_choices: True ||| False
+    id: 327df604-0115-4eea-8099-735a9415dafa
+    jinja: '{{premise}}
+        Question: {{hypothesis}} {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label]
+        }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: GPT-3 style
+    reference: 'Adapted from Same as reported in Figure G7 of the GPT-3 paper, except that there
+        is no task identifying tokens like "anli R1: ".'
+  5333f5e8-d1cc-4bdd-b1db-c33c20dc0fd8: !Template
+    answer_choices: Yes ||| No
+    id: 5333f5e8-d1cc-4bdd-b1db-c33c20dc0fd8
+    jinja: '{{premise}} Based on the previous passage, is it true that "{{hypothesis}}"?
+        {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: based on the previous passage
+    reference: "Adapted from the BoolQ prompts in Schick & Sch\xFCtze 2021."
+  56baf6a1-6dc7-4568-bae0-261f3845c1cb: !Template
+    answer_choices: Yes ||| No
+    id: 56baf6a1-6dc7-4568-bae0-261f3845c1cb
+    jinja: '{{premise}} Are we justified in saying that "{{hypothesis}}"? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: justified in saying
+    reference: Adapted from Webson & Pavlick 2021
+  52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59: !Template
+    answer_choices: True ||| False
+    id: 52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59
+    jinja: 'Take the following as truth: {{premise}}
+        Then the following statement: "{{hypothesis}}" is {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: take the following as truth
+    reference: Adapted from v0.1
+  f89113db-295d-4378-b42d-54e6fd6134e7: !Template
+    answer_choices: Yes ||| No
+    id: f89113db-295d-4378-b42d-54e6fd6134e7
+    jinja: 'Given that {{premise}} Therefore, it must be true that "{{hypothesis}}"?
+        {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: must be true
+    reference: Adapted v0.1
+  916c4db4-d9c7-40f2-8d29-44cf58aabe9c: !Template
+    answer_choices: Yes ||| No
+    id: 916c4db4-d9c7-40f2-8d29-44cf58aabe9c
+    jinja: 'Suppose {{premise}} Can we infer that "{{hypothesis}}"? {{ answer_choices[0] }} or {{ answer_choices[1] }}?
+        ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: can we infer
+    reference: Adapted from Webson & Pavlick 2021
+  131a1f8c-d689-436f-981f-ac367e599ab4: !Template
+    answer_choices: Guaranteed ||| Impossible
+    id: 131a1f8c-d689-436f-981f-ac367e599ab4
+    jinja: "Assume it is true that {{premise}} \n\nTherefore, \"{{hypothesis}}\" is\
+        \ {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label]\
+        \ }}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: guaranteed/possible/impossible
+    reference: Adapted from v0.1
+  fb4ef6a6-d56d-4bfe-97be-d2b4fa7e9e95: !Template
+    answer_choices: Always ||| Never
+    id: fb4ef6a6-d56d-4bfe-97be-d2b4fa7e9e95
+    jinja: Suppose it's true that {{premise}} Then, is "{{hypothesis}}"  {{ answer_choices[0] }}, or {{ answer_choices[1] }} true? ||| {{ answer_choices[label] }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: always/sometimes/never
+    reference: Adapted from v0.1
+  524842e9-5d2e-4659-9b60-9b133ad408f1: !Template
+    answer_choices: Yes ||| No
+    id: 524842e9-5d2e-4659-9b60-9b133ad408f1
+    jinja: "{{premise}} \n\nQuestion: Does this imply that \"{{hypothesis}}\"? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: does this imply
+    reference: Adapted from v0.1
+  8412569c-ef1d-453d-8517-093dfd493468: !Template
+    answer_choices: True ||| False
+    id: 8412569c-ef1d-453d-8517-093dfd493468
+    jinja: '{{premise}} Based on that information, is the claim: "{{hypothesis}}"
+        {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label]
+        }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: claim true/false/inconclusive
+    reference: Adapted from v0.1
+  00910728-adbd-4dc4-b883-e3b4f0645a6a: !Template
+    answer_choices: Yes ||| No
+    id: 00910728-adbd-4dc4-b883-e3b4f0645a6a
+    jinja: 'Given {{premise}} Is it guaranteed true that "{{hypothesis}}"? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: guaranteed true
+    reference: Webson & Pavlick 2021
+  390a0fe5-4713-4ded-8037-db26768ba503: !Template
+    answer_choices: Always ||| Never
+    id: 390a0fe5-4713-4ded-8037-db26768ba503
+    jinja: "{{premise}} \n\nKeeping in mind the above text, consider: {{hypothesis}}\
+        \ Is this {{ answer_choices[0] }} or {{ answer_choices[1] }} correct? ||| {{\
+        \ answer_choices[label] }}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: consider always/sometimes/never
+    reference: Adapted from v0.1
+  abb417a5-1142-4452-9a94-09a1c56bdd34: !Template
+    answer_choices: Yes ||| No
+    id: abb417a5-1142-4452-9a94-09a1c56bdd34
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true?
+
+      A: {{ answer_choices[0] }}
+
+      B: {{ answer_choices[1] }}
+
+      ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }} or {{ answer_choices[1] }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: should assume MCQ
+    reference: Adapted from Webson & Pavlick 2021
+  6a70ebde-5287-4448-a39d-8d84826b9cb5: !Template
+    answer_choices: Always ||| Never
+    id: 6a70ebde-5287-4448-a39d-8d84826b9cb5
+    jinja: 'Suppose it is true that {{premise}} Then, is "{{hypothesis}}"
+
+      A: {{ answer_choices[0] }}
+
+      B: {{ answer_choices[1] }}
+
+      ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: always/sometimes/never MCQ
+    reference: Adapted from v0.1
+  7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df: !Template
+    answer_choices: Yes ||| No
+    id: 7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df
+    jinja: '{{premise}}
+        According to the above context, answer the following question.
+
+        {{hypothesis}}
+
+        |||
+
+        {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: false
+    name: context_description_question_text
+    reference: ''
+  5a65c67f-ec9c-44f1-a610-63a7d1d016d0: !Template
+    answer_choices: Yes ||| No
+    id: 5a65c67f-ec9c-44f1-a610-63a7d1d016d0
+    jinja: '{{premise}}
+        According to the above context, answer the following question.
+
+        {{hypothesis}}
+
+        A: {{ answer_choices[0] }}
+
+        B: {{ answer_choices[1] }}
+
+        |||
+
+        {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: false
+    name: context_description_question_text_MCQ
+    reference: ''

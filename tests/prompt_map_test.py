@@ -149,8 +149,10 @@ def test_load_general_prompts(tmpdir):
             c, p, m = x
             assert c == prompt_cfg['short_name']
             answer_choices = prompt_cfg['possible_answer_choices'][i]
+
+            choices_str = map(lambda _c: _c.strip(), answer_choices.split("|||"))
             assert m == {
-                "name": f"{sanitize_name(prompt.name)}.{''.join(answer_choices.split('|||'))}",
+                "name": f"{sanitize_name(prompt.name)}.{''.join(choices_str)}",
                 **v
             }
             assert p.answer_choices == answer_choices

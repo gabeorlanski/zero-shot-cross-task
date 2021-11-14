@@ -198,11 +198,12 @@ def load_general_prompts(
             # Deepcopy to avoid saving a mutable object that will be incorrect
             new_prompt = deepcopy(prompt)
             new_prompt.answer_choices = choices
+            choices_str = map(lambda c: c.strip(), choices.split("|||"))
             out.append((
                 prompt_cfg['short_name'],
                 new_prompt,
                 {
-                    "name": f"{sanitize_name(prompt.name)}.{''.join(choices.split('|||'))}",
+                    "name": f"{sanitize_name(prompt.name)}.{''.join(choices_str)}",
                     **current_prompt_metadata
                 }
             ))

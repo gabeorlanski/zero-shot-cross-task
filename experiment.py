@@ -72,6 +72,7 @@ def run(cfg: DictConfig):
         logger.warning(f"Debugging enbaled, only using a single prompt")
         prompts_to_use = prompts_to_use[:1]
     logger.info(f"Prompts to use are: {','.join(p['name'] for _, _, p in prompts_to_use)}")
+    logger.info(f"{len(prompts_to_use)} total prompts ")
 
     run_experiments(
         cfg=cfg,
