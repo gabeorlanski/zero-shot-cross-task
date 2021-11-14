@@ -83,6 +83,8 @@ prompt_metadata:
   524842e9-5d2e-4659-9b60-9b133ad408f1:
     original_choices: Yes ||| Maybe ||| No
     original_task:
+      - anli
+      - cb
     category: Fixed Choice
   8412569c-ef1d-453d-8517-093dfd493468:
     original_choices: True ||| Inconclusive ||| False
