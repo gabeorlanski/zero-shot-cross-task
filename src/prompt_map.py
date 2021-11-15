@@ -3,6 +3,7 @@ import logging
 
 from datasets import Dataset
 from promptsource.templates import Template, DatasetTemplates
+from transformers import PreTrainedTokenizer
 import yaml
 from pathlib import Path
 from omegaconf import DictConfig
@@ -23,11 +24,13 @@ class PromptMapper:
     def __init__(
             self,
             prompt: Template,
+            tokenizer: PreTrainedTokenizer,
             num_proc=1,
             remove_columns=None,
-            batch_size=None
+            batch_size=None,
     ):
         self.prompt = prompt
+        self.tokenizer = tokenizer
         self.num_proc = num_proc
         self.remove_columns = remove_columns or []
         self.batch_size = batch_size or 1
@@ -49,7 +52,7 @@ class PromptMapper:
         # Map the prompt to the dataset and remove columns as needed.
         if self.batch_size > 1:
             return preprocessed.map(
-                lambda b: self.apply_prompt_to_batch(self.prompt, b),
+                lambda b: self.apply_prompt_to_batch(self.prompt, self.tokenizer, b),
                 num_proc=self.num_proc,
                 remove_columns=self.remove_columns,
                 batched=True,
@@ -57,13 +60,13 @@ class PromptMapper:
             )
 
         return preprocessed.map(
-            lambda b: self.apply_prompt_to_example(self.prompt, b),
+            lambda b: self.apply_prompt_to_example(self.prompt, self.tokenizer, b),
             num_proc=self.num_proc,
             remove_columns=self.remove_columns)
 
     @staticmethod
-    def apply_prompt_to_batch(prompt, batch):
-        out = {"prompt": [], "output": [], "choices": []}
+    def apply_prompt_to_batch(prompt, tokenizer, batch):
+        out = {"prompt": [], "output": [], "choices": [], "choice_ids": []}
         example_num = 0
         keys = list(batch.keys())
         while True:
@@ -81,18 +84,22 @@ class PromptMapper:
             prompt_str, output_str = prompt.apply(example)
             out['prompt'].append(prompt_str)
             out['output'].append(output_str)
-            out["choices"].append(prompt.get_answer_choices_list(example) or [])
+            choices = prompt.get_answer_choices_list(example) or []
+            out['choice_ids'].append(tokenizer(choices, add_special_tokens=False)['input_ids'])
+            out['choices'].append(choices)
             example_num += 1
 
         return out
 
     @staticmethod
-    def apply_prompt_to_example(prompt, example):
+    def apply_prompt_to_example(prompt, tokenizer, example):
         prompt_str, output_str = prompt.apply(example)
+        choices = prompt.get_answer_choices_list(example) or []
         return {
-            "prompt": prompt_str,
-            "output": output_str,
-            "choices": prompt.get_answer_choices_list(example) or []
+            "prompt"    : prompt_str,
+            "output"    : output_str,
+            "choices"   : choices,
+            "choice_ids": tokenizer(choices, add_special_tokens=False)['input_ids']
         }
 
 
@@ -166,6 +173,7 @@ def load_general_prompts(
         prompt_dir: Path,
         prompt_cfg: DictConfig,
         category_filter: Optional[List] = None,
+        answer_filter: Optional[List] = None,
         prompt_filter_kwargs: Dict = None
 ) -> List:
     prompt_path = prompt_dir.joinpath(prompt_cfg['file_name'])
@@ -195,6 +203,9 @@ def load_general_prompts(
             logger.info(f"Skipping '{prompt.name}' as it is not in filtered category")
 
         for choices in prompt_cfg['possible_answer_choices']:
+            if answer_filter is not None and choices.split("|||") not in answer_filter:
+                continue
+
             # Deepcopy to avoid saving a mutable object that will be incorrect
             new_prompt = deepcopy(prompt)
             new_prompt.answer_choices = choices

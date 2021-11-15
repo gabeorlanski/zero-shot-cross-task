@@ -16,8 +16,9 @@ def test_generate_prediction_sequences(tmpdir):
     def tok(p, h, ex_idx):
         labels = tokenizer(h)
         source = tokenizer(p)
-        return {"idx"      : ex_idx, "labels": labels['input_ids'],
-                "input_len": sum(source['attention_mask']), **source
+        return {
+            "idx"      : ex_idx, "labels": labels['input_ids'],
+            "input_len": sum(source['attention_mask']), **source
         }
 
     ds = ds.map(  # type: ignore
@@ -80,12 +81,17 @@ def test_generate_prediction_sequences(tmpdir):
                          ids=["Single Token", "Multi-Token"])
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
-def test_generate_prediction_choices(tmpdir, choices, length_normalized):
-    original_dataset = load_dataset("anli", split="train_r1[:16]").map(
-        lambda d: {"choices": choices, **d}
-    )
-
+@pytest.mark.parametrize("force_not_fixed", [True, False],
+                         ids=["Force Not Fixed", "Not Fixed"])
+def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_not_fixed):
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
+    original_dataset = load_dataset("anli", split="train_r1[:16]").map(
+        lambda d: {
+            "choices"   : choices,
+            "choice_ids": tokenizer(choices, add_special_tokens=False)['input_ids'],
+            **d
+        }
+    )
 
     def tok(p, h, label, ex_idx):
 
@@ -146,7 +152,8 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized):
         tokenizer,
         torch.device("cpu"),
         source_dataset=original_dataset,
-        length_normalize=length_normalized
+        length_normalize=length_normalized,
+        force_not_fixed_choice=force_not_fixed
     )
 
     assert res_path.stem == "predictions"

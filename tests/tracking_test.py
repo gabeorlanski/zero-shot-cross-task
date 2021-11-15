@@ -23,7 +23,7 @@ def test_create_predictions_df(tmpdir):
                 "id"           : 23, "prediction": ["A"],
                 "target"       : "B",
                 "input"        : "Abc",
-                "choice_logits": {"A": 1, "B": 2, "C": 3}
+                "choice_logits": {"A": -1, "B": -4, "C": -5}
             },
             {
                 "id"           : 50, "prediction": [
@@ -47,8 +47,8 @@ def test_create_predictions_df(tmpdir):
             f.write(json.dumps(l) + "\n")
 
     result = tracking.create_predictions_df(pred_path)
-    from scipy.special import softmax
-    normalized = softmax([1, 2, 3])
+    import numpy as np
+    normalized = [0.45, 0.3, 0.25]
 
     expected = pd.DataFrame.from_records(
         [{
@@ -61,9 +61,9 @@ def test_create_predictions_df(tmpdir):
             "choice_0"           : "A",
             "choice_1"           : "B",
             "choice_2"           : "C",
-            "c0_logit"           : 1,
-            "c1_logit"           : 2,
-            "c2_logit"           : 3,
+            "c0_logit"           : -1,
+            "c1_logit"           : -4,
+            "c2_logit"           : -5,
             "c0_logit_normalized": normalized[0],
             "c1_logit_normalized": normalized[1],
             "c2_logit_normalized": normalized[2],

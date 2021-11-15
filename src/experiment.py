@@ -115,7 +115,6 @@ def run_experiments(
         dataset_name,
         split_name,
         task_name,
-        prompt_task,
         verbose_name,
         categories,
         seeds

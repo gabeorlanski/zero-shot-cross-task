@@ -9,6 +9,7 @@ def preprocess_dataset(task, dataset, tokenizer, prompt, num_proc=4,
                        batch_size=1):
     prompt_mapper = PromptMapper(
         prompt,
+        tokenizer,
         num_proc=num_proc,
         batch_size=batch_size
     )

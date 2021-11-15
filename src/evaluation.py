@@ -9,9 +9,8 @@ from transformers import DataCollatorForSeq2Seq, PreTrainedModel, PreTrainedToke
 from datasets import Dataset
 from promptsource.templates import Template
 import numpy as np
-from functools import lru_cache
 from src.preprocessing import preprocess_dataset
-from src.common import flatten
+from src.common import all_equal
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +131,8 @@ def generate_predictions_choices(
         tokenizer,
         device,
         source_dataset,
-        length_normalize=False
+        length_normalize=False,
+        force_not_fixed_choice=False
 ):
     """
     Generate predictions when using answer choices.
@@ -153,10 +153,10 @@ def generate_predictions_choices(
     pred_file = pred_path.open('w', encoding="utf-8")
     data_iterator = tqdm(data_loader, desc="Generating")
 
-    # Cache in case we are using fixed choices.
-    @lru_cache(maxsize=5)
-    def tokenize_choice(choice_str):
-        return tokenizer(choice_str, add_special_tokens=False)['input_ids']
+    # Hacky fix to check if it is a fixed choice task
+    is_fixed_choice = all_equal(source_dataset['choices']) and not force_not_fixed_choice
+
+    logger.info(f"Fixed choice is {'not' if not is_fixed_choice else ''} enabled.")
 
     with torch.no_grad():
         for batch in data_iterator:
@@ -172,29 +172,50 @@ def generate_predictions_choices(
             source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
             gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
 
-            # TODO(gabeorlanski): Optimize this
             choices_by_example = []
-            for i in range(len(gold)):
+            choice_probs = torch.zeros(
+                (len(gold), max(map(len, source_dataset['choices'])))
+            )
 
+            if is_fixed_choice:
                 # Get the choices for this sample
-                choices = source_dataset[ex_idx[i].item()]['choices']
-                choice_probs = torch.zeros(len(choices))
-
+                choice_ids = source_dataset[ex_idx[0].item()]['choice_ids']
+                choices = source_dataset[ex_idx[0].item()]['choices']
                 # For each choice, sum up the probabilities of it being
                 # generated.
-                for j, choice in enumerate(choices):
-                    choice_ids = tokenize_choice(choice)
-                    choice_probs[j] = generated.logits[i, :, choice_ids].sum()
-
+                for j, choice in enumerate(choice_ids):
+                    choice_logits = torch.sum(generated.logits[:, :, choice], (1, 2))
                     # Choices can have different token lengths, which would
                     # punish longer options, apply length normalization to fix
                     # this.
                     if length_normalize:
-                        choice_probs[j] /= len(choice_ids)
+                        choice_logits /= len(choice)
 
-                choices_by_example.append(
-                    {c: p.item() for c, p in zip(choices, choice_probs)}
-                )
+                    choice_probs[:, j] = choice_logits
+
+                for i in range(len(gold)):
+                    choices_by_example.append(
+                        {c: p.item() for c, p in zip(choices, choice_probs[i])}
+                    )
+            else:
+                for i in range(len(gold)):
+                    choice_ids = source_dataset[ex_idx[i].item()]['choice_ids']
+                    choices = source_dataset[ex_idx[i].item()]['choices']
+
+                    for j, choice in enumerate(choice_ids):
+                        choice_logits = generated.logits[i, :, choice].sum()
+
+                        # Choices can have different token lengths, which would
+                        # punish longer options, apply length normalization to fix
+                        # this.
+                        if length_normalize:
+                            choice_logits /= len(choice)
+
+                        choice_probs[i, j] = choice_logits
+
+                    choices_by_example.append(
+                        {c: p.item() for c, p in zip(choices, choice_probs[i])}
+                    )
 
             logger.debug("Saving JSON lines for batch")
             for i, target in enumerate(gold):

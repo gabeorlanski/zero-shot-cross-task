@@ -80,7 +80,6 @@ def run(cfg: DictConfig):
         dataset_name=dataset_name,
         split_name=split,
         task_name=task_name,
-        prompt_task=prompt_task,
         verbose_name=verbose_name,
         categories=categories,
         seeds=seeds

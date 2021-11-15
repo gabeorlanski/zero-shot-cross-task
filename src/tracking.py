@@ -8,6 +8,7 @@ from promptsource.templates import Template
 import wandb
 from scipy.special import softmax
 import pandas as pd
+import numpy as np
 
 
 def get_prompt_info_for_wandb(
@@ -108,11 +109,13 @@ def create_predictions_df(predictions_path):
         d['pred_id'] = None
         d['target_id'] = None
         if choice_logits:
-            normalized = softmax(list(choice_logits.values()))
+            normalized = np.array(list(choice_logits.values()))
+            normalized = 1 - normalized / normalized.sum()
+            normalized /= normalized.sum()
             for i, v in enumerate(sorted(list(choice_logits.keys()))):
                 d[f"choice_{i}"] = v
                 d[f"c{i}_logit"] = choice_logits[v] if choice_logits else None
-                d[f"c{i}_logit_normalized"] = normalized[i] if len(normalized)>0 else None
+                d[f"c{i}_logit_normalized"] = normalized[i] if len(normalized) > 0 else None
                 if v == pred:
                     d['pred_id'] = i
                 if v == d['target']:
