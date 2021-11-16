@@ -39,6 +39,7 @@ def serialize_prediction(
         prediction,
         target,
         input_seq,
+        decoder_input=None,
         choice_logits=None
 ) -> str:
     """
@@ -49,6 +50,8 @@ def serialize_prediction(
         prediction (list): List of prediction strings.
         target (str): The target string.
         input_seq (str): The input string.
+        decoder_input (str): The input that would be passed to T5 as the
+         decoder_input_ids
         choice_logits (dict): The choices (if exist) dict with log probabilities.
 
     """
@@ -57,6 +60,7 @@ def serialize_prediction(
         "prediction"   : prediction,
         "target"       : target,
         "input"        : input_seq,
+        "decoder_input": decoder_input,
         "choice_logits": choice_logits or {}
     })
 
@@ -220,6 +224,23 @@ def generate_predictions_choices(
             logger.debug("Saving JSON lines for batch")
             for i, target in enumerate(gold):
                 example_choice_probs = choices_by_example[i]
+
+                decoder_input_str = tokenizer.decode(
+                    batch['choices_tokenized'][i],
+                    skip_special_tokens=False
+                )
+                # Need to split on the EOS token.
+                decoder_input_strs = decoder_input_str.split(tokenizer.eos_token)
+
+                # If the last of the split strings start with pad or is empty
+                # skip it.
+                if decoder_input_strs:
+                    if (
+                            not decoder_input_strs[-1]
+                            or decoder_input_strs[-1][0] == tokenizer.pad_token
+                    ):
+                        decoder_input_strs = decoder_input_strs[:-1]
+
                 prediction_choice = max(
                     example_choice_probs.keys(),
                     key=lambda x: example_choice_probs[x]
@@ -230,6 +251,7 @@ def generate_predictions_choices(
                     [prediction_choice],
                     target,
                     source[i],
+                    f" {tokenizer.eos_token} ".join(map(lambda s: s.strip(), decoder_input_strs)),
                     example_choice_probs
                 ) + '\n')
 

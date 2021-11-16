@@ -18,14 +18,16 @@ def test_single_experiment(tmpdir, force, existing_dir, subset):
     tmpdir_path = Path(tmpdir)
 
     cfg = OmegaConf.create({
-        "task"                : "Test",
-        "model_name"          : "Test",
-        "force"               : force,
-        "batch_size"          : 8,
-        "beams"               : 4,
-        "force_generation"    : False,
-        "length_normalization": False,
-        "num_proc"            : 1
+        "task"      : "Test",
+        "model_name": "Test",
+        "force"     : force,
+        "batch_size": 8,
+        "beams"     : 4,
+        "evaluation": {
+            "force_generation"    : False,
+            "length_normalization": False,
+        },
+        "num_proc"  : 1
 
     })
 
