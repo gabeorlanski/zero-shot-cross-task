@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict, Counter
 from copy import copy
 from typing import Dict, Tuple, List
 
@@ -93,8 +94,10 @@ def create_run_cfg(
     return tags, run_cfg
 
 
-def create_predictions_df(predictions_path):
+def get_metrics_for_wandb(metrics_path, predictions_path):
     records = []
+    metrics = json.loads(metrics_path.read_text('utf-8'))
+    logit_keys = []
     for line in predictions_path.read_text('utf-8').splitlines(False):
         d = json.loads(line)
 
@@ -105,29 +108,40 @@ def create_predictions_df(predictions_path):
             others = []
 
         choice_logits = d.pop('choice_logits')
+        choices = d.pop('choices')
         d['choice_count'] = len(choice_logits)
 
         d['pred_id'] = None
         d['target_id'] = None
-        if choice_logits:
-            normalized = np.array(list(choice_logits.values()))
-            normalized = 1 - normalized / normalized.sum()
-            normalized /= normalized.sum()
-            for i, v in enumerate(sorted(list(choice_logits.keys()))):
+        d['correct'] = pred == d['target']
+        if choice_logits and choices:
+            for i, v in enumerate(choices):
                 d[f"choice_{i}"] = v
-                d[f"c{i}_logit"] = choice_logits[v] if choice_logits else None
-                d[f"c{i}_logit_normalized"] = normalized[i] if len(normalized) > 0 else None
+                logit_key = f"c{i}_logit"
+                d[logit_key] = choice_logits[v] if choice_logits else None
+                if logit_key not in logit_keys:
+                    logit_keys.append(logit_key)
+
                 if v == pred:
                     d['pred_id'] = i
                 if v == d['target']:
                     d['target_id'] = i
 
-        d['correct'] = pred == d['target']
-
         d['prediction'] = pred
         d['other_beams'] = others
         records.append(d)
-    return pd.DataFrame.from_records(records).sort_values(by=['id'])
+
+    out_df = pd.DataFrame.from_records(records).sort_values(
+        by=['id']
+    )
+    if logit_keys:
+        logits = out_df[logit_keys]
+        logit_metrics = logits.agg(['mean', 'median', 'std'])
+        for col, values in logit_metrics.to_dict().items():
+            for metric, value in values.items():
+                metrics[f"{col}_{metric}"] = value
+
+    return metrics, out_df
 
 
 def save_run_to_wandb(
@@ -153,6 +167,10 @@ def save_run_to_wandb(
 
     tags.extend(categories)
 
+    metrics, df = get_metrics_for_wandb(
+        metrics_path, predictions_path
+    )
+    pred_table = wandb.Table(dataframe=df)
     wandb_run = wandb.init(
         project="zero-shot-eval",
         job_type="evaluation" if not is_debug else "debugging",
@@ -162,12 +180,11 @@ def save_run_to_wandb(
         tags=tags,
         config=run_cfg
     )
-    metrics = json.loads(metrics_path.read_text('utf-8'))
     wandb_run.log(metrics)
 
-    pred_table = wandb.Table(dataframe=create_predictions_df(predictions_path))
     wandb_run.log({"predictions": pred_table})
-    artifact = wandb.Artifact(f"{sanitize_name(group_name)}.{sanitize_name(run_name)}", 'predictions')
+    artifact = wandb.Artifact(f"{sanitize_name(group_name)}.{sanitize_name(run_name)}",
+                              'predictions')
     artifact.add_dir(metrics_path.parent)
     wandb_run.log_artifact(artifact)
 

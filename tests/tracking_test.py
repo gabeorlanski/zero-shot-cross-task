@@ -46,7 +46,7 @@ def test_create_predictions_df(tmpdir):
         for l in data:
             f.write(json.dumps(l) + "\n")
 
-    result = tracking.create_predictions_df(pred_path)
+    result = tracking.get_metrics_for_wandb(pred_path)
     import numpy as np
     normalized = [0.45, 0.3, 0.25]
 

@@ -29,7 +29,7 @@ python experiment.py +run_name="AC" task=anli +split=dev_r3 \
   use_general_prompts=True \
   evaluation.length_normalization=True \
   model_name="bigscience/T0_3B"
-  
+
 python experiment.py +run_name="AC" task=cb +split=validation num_proc=4 \
   prompt_filter.name_list=["does it follow that","can we infer","justified in saying","should assume MCQ","support"] \
   use_general_prompts=True \

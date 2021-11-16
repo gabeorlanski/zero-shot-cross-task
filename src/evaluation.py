@@ -40,6 +40,7 @@ def serialize_prediction(
         target,
         input_seq,
         decoder_input=None,
+        choices=None,
         choice_logits=None
 ) -> str:
     """
@@ -61,6 +62,7 @@ def serialize_prediction(
         "target"       : target,
         "input"        : input_seq,
         "decoder_input": decoder_input,
+        "choices"      : choices,
         "choice_logits": choice_logits or {}
     })
 
@@ -241,8 +243,9 @@ def generate_predictions_choices(
                     ):
                         decoder_input_strs = decoder_input_strs[:-1]
 
+                choices = source_dataset[ex_idx[i].item()]['choices']
                 prediction_choice = max(
-                    example_choice_probs.keys(),
+                    choices,
                     key=lambda x: example_choice_probs[x]
                 )
 
@@ -252,7 +255,8 @@ def generate_predictions_choices(
                     target,
                     source[i],
                     f" {tokenizer.eos_token} ".join(map(lambda s: s.strip(), decoder_input_strs)),
-                    example_choice_probs
+                    choices,
+                    example_choice_probs,
                 ) + '\n')
 
     data_iterator.close()

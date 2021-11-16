@@ -11,7 +11,6 @@ possible_answer_choices:
   - Guaranteed ||| Possible ||| Impossible
   - Always ||| Sometimes ||| Never
   - Entailment ||| Neutral ||| Contradiction
-  - Supports ||| Neither ||| Contradicts
   - Imply ||| Neither ||| Contradict
 prompt_metadata:
   9532d63e-7996-4cee-a1e3-014fb19802e5:
