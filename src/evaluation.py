@@ -195,8 +195,10 @@ def generate_predictions_choices(
                     # punish longer options, apply length normalization to fix
                     # this.
                     if length_normalize:
+                        # Bug w/ pytorch where tensor /= len(list) does not
+                        # give correct value
                         choice_len = len(choice)
-                        choice_logits /= choice_len
+                        choice_logits = choice_logits*(1/ choice_len)
 
                     choice_probs[:, j] = choice_logits
 

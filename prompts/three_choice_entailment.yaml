@@ -3,7 +3,7 @@ templates:
     answer_choices: Correct ||| Inconclusive ||| Incorrect
     id: 9532d63e-7996-4cee-a1e3-014fb19802e5
     jinja: '{{premise}} Using only the above description and what you know about the
-      world, "{{hypothesis}}" is definitely {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? |||
+      world, "{{hypothesis}}" is definitely {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? |||
       {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -15,8 +15,8 @@ templates:
   e2433288-fdd8-4bd1-8eca-a2739b1d3101: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: e2433288-fdd8-4bd1-8eca-a2739b1d3101
-    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
-    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -27,7 +27,7 @@ templates:
   747eb8cc-d05e-4252-86f5-a9bec7c465c9: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 747eb8cc-d05e-4252-86f5-a9bec7c465c9
-    jinja: 'Given that {{premise}} Does it follow that {{hypothesis}} {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}?
+    jinja: 'Given that {{premise}} Does it follow that {{hypothesis}} {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}?
       ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -40,7 +40,7 @@ templates:
     answer_choices: True ||| Neither ||| False
     id: 327df604-0115-4eea-8099-735a9415dafa
     jinja: '{{premise}}
-        Question: {{hypothesis}} {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label]
+        Question: {{hypothesis}} {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label]
         }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -54,7 +54,7 @@ templates:
     answer_choices: Yes ||| Maybe ||| No
     id: 5333f5e8-d1cc-4bdd-b1db-c33c20dc0fd8
     jinja: '{{premise}} Based on the previous passage, is it true that "{{hypothesis}}"?
-        {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }}'
+        {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -65,7 +65,7 @@ templates:
   56baf6a1-6dc7-4568-bae0-261f3845c1cb: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 56baf6a1-6dc7-4568-bae0-261f3845c1cb
-    jinja: '{{premise}} Are we justified in saying that "{{hypothesis}}"? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    jinja: '{{premise}} Are we justified in saying that "{{hypothesis}}"? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -77,7 +77,7 @@ templates:
     answer_choices: True ||| Inconclusive ||| False
     id: 52c9d5e8-ef1d-4d5a-91ee-8e8aa2b9ac59
     jinja: 'Take the following as truth: {{premise}}
-        Then the following statement: "{{hypothesis}}" is {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }}'
+        Then the following statement: "{{hypothesis}}" is {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -89,7 +89,7 @@ templates:
     answer_choices: Yes ||| Maybe ||| No
     id: f89113db-295d-4378-b42d-54e6fd6134e7
     jinja: 'Given that {{premise}} Therefore, it must be true that "{{hypothesis}}"?
-        {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+        {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -100,7 +100,7 @@ templates:
   916c4db4-d9c7-40f2-8d29-44cf58aabe9c: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 916c4db4-d9c7-40f2-8d29-44cf58aabe9c
-    jinja: 'Suppose {{premise}} Can we infer that "{{hypothesis}}"? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}?
+    jinja: 'Suppose {{premise}} Can we infer that "{{hypothesis}}"? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}?
         ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -113,7 +113,7 @@ templates:
     answer_choices: Guaranteed ||| Possible ||| Impossible
     id: 131a1f8c-d689-436f-981f-ac367e599ab4
     jinja: "Assume it is true that {{premise}} \n\nTherefore, \"{{hypothesis}}\" is\
-        \ {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label]\
+        \ {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label]\
         \ }}"
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -125,7 +125,7 @@ templates:
   fb4ef6a6-d56d-4bfe-97be-d2b4fa7e9e95: !Template
     answer_choices: Always ||| Sometimes ||| Never
     id: fb4ef6a6-d56d-4bfe-97be-d2b4fa7e9e95
-    jinja: Suppose it's true that {{premise}} Then, is "{{hypothesis}}"  {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }} true? ||| {{ answer_choices[label] }}
+    jinja: Suppose it's true that {{premise}} Then, is "{{hypothesis}}"  {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }} true? ||| {{ answer_choices[label] }}
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -136,7 +136,7 @@ templates:
   524842e9-5d2e-4659-9b60-9b133ad408f1: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 524842e9-5d2e-4659-9b60-9b133ad408f1
-    jinja: "{{premise}} \n\nQuestion: Does this imply that \"{{hypothesis}}\"? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{answer_choices[label]}}"
+    jinja: "{{premise}} \n\nQuestion: Does this imply that \"{{hypothesis}}\"? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{answer_choices[label]}}"
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -148,7 +148,7 @@ templates:
     answer_choices: True ||| Inconclusive ||| False
     id: 8412569c-ef1d-453d-8517-093dfd493468
     jinja: '{{premise}} Based on that information, is the claim: "{{hypothesis}}"
-        {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label]
+        {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label]
         }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -160,7 +160,7 @@ templates:
   00910728-adbd-4dc4-b883-e3b4f0645a6a: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 00910728-adbd-4dc4-b883-e3b4f0645a6a
-    jinja: 'Given {{premise}} Is it guaranteed true that "{{hypothesis}}"? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Is it guaranteed true that "{{hypothesis}}"? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -172,7 +172,7 @@ templates:
     answer_choices: Always ||| Sometimes ||| Never
     id: 390a0fe5-4713-4ded-8037-db26768ba503
     jinja: "{{premise}} \n\nKeeping in mind the above text, consider: {{hypothesis}}\
-        \ Is this {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }} correct? ||| {{\
+        \ Is this {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }} correct? ||| {{\
         \ answer_choices[label] }}"
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -186,14 +186,14 @@ templates:
     id: abb417a5-1142-4452-9a94-09a1c56bdd34
     jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true?
 
-      A: {{ answer_choices[0] }}
+      A: {{ answer_choices[0]|lower }}
 
-      B: {{ answer_choices[1] }}
+      B: {{ answer_choices[1]|lower }}
 
-      C: {{ answer_choices[2] }}
+      C: {{ answer_choices[2]|lower }}
 
       ||| {{ answer_choices[label] }} '
-    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}? ||| {{ answer_choices[label] }} '
+    jinja: 'Given {{premise}} Should we assume that "{{hypothesis}}" is true? {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}? ||| {{ answer_choices[label] }} '
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -206,11 +206,11 @@ templates:
     id: 6a70ebde-5287-4448-a39d-8d84826b9cb5
     jinja: 'Suppose it is true that {{premise}} Then, is "{{hypothesis}}"
 
-      A: {{ answer_choices[0] }}
+      A: {{ answer_choices[0]|lower }}
 
-      B: {{ answer_choices[1] }}
+      B: {{ answer_choices[1]|lower }}
 
-      C: {{ answer_choices[2] }}
+      C: {{ answer_choices[2]|lower }}
 
       ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
@@ -228,11 +228,11 @@ templates:
 
           {{hypothesis}}
 
-          A: {{ answer_choices[0] }}
+          A: {{ answer_choices[0]|lower }}
 
-          B: {{ answer_choices[1] }}
+          B: {{ answer_choices[1]|lower }}
 
-          C: {{ answer_choices[2] }}
+          C: {{ answer_choices[2]|lower }}
 
           |||
 
@@ -251,7 +251,7 @@ templates:
         {{premise}}
         Does this premise support the following hypothesis?
         {{hypothesis}}
-        Please answer {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
+        Please answer {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}.
         |||
         {{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -267,7 +267,7 @@ templates:
     jinja: '{{premise}}
         Does the above sentence imply or contradict that "{{hypothesis}}"? Please answer
 
-        {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
+        {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}.
         |||
         {{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -302,8 +302,8 @@ disabled:
     answer_choices: Entailment ||| Neutral ||| Contradiction
     id: 074de970-f1fd-4793-923e-88299502e2f0
     jinja: 'The relationship between the following sentences can be characterized
-        as {{ answer_choices[0] }} (one sentence implies the other), {{ answer_choices[1] }} (the sentences
-        don''t necessarily imply or contradict one another), or {{ answer_choices[2] }}
+        as {{ answer_choices[0]|lower }} (one sentence implies the other), {{ answer_choices[1]|lower }} (the sentences
+        don''t necessarily imply or contradict one another), or {{ answer_choices[2]|lower }}
         (the sentences contract each other).
         {{hypothesis}}
         {{premise}}
@@ -321,8 +321,8 @@ disabled:
     answer_choices: Yes ||| Maybe ||| No
     id: 32ae8811-2a1f-4027-96e8-725ecd08bba1
     jinja: '{{premise}}
-      Given the above, is it necessarily true that "{{hypothesis}}"? {{"A) {{ answer_choices[0] }} B)
-      {{ answer_choices[1] }} or C) {{ answer_choices[2] }}."}}
+      Given the above, is it necessarily true that "{{hypothesis}}"? {{"A) {{ answer_choices[0]|lower }} B)
+      {{ answer_choices[1]|lower }} or C) {{ answer_choices[2]|lower }}."}}
       |||
       {{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -337,7 +337,7 @@ disabled:
     id: 3f6b9de8-616b-4a43-a077-e205a4c33a28
     jinja: 'Consider the hypothesis that "{{hypothesis}}"
       Does this follow from the knowledge that "{{premise}}"
-      {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}
+      {{ answer_choices[0]|lower }}, {{ answer_choices[1]|lower }}, or {{ answer_choices[2]|lower }}
       |||
       {{answer_choices[label]}}'
     metadata: !TemplateMetadata
