@@ -1,7 +1,5 @@
 #!/bin/bash
 # Run the experiments
-python experiment.py +run_name="Baseline" task=cb +split=validation model_name="bigscience/T0_3B"
-
 python experiment.py +run_name="AC" task=cb +split=validation \
   num_proc=4 \
   debug=False \
