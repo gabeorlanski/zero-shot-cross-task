@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run the experiments
-python experiment.py +run_name="AC" task=cb +split=validation \
+python experiment.py +run_name="11B" task=cb +split=validation \
   num_proc=4 \
   debug=False \
   cuda_device=-1 \
