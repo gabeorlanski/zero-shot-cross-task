@@ -195,7 +195,8 @@ def generate_predictions_choices(
                     # punish longer options, apply length normalization to fix
                     # this.
                     if length_normalize:
-                        choice_logits /= len(choice)
+                        choice_len = len(choice)
+                        choice_logits /= choice_len
 
                     choice_probs[:, j] = choice_logits
 
