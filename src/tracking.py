@@ -167,7 +167,7 @@ def save_run_to_wandb(
 
     pred_table = wandb.Table(dataframe=create_predictions_df(predictions_path))
     wandb_run.log({"predictions": pred_table})
-    artifact = wandb.Artifact(f"{sanitize_name(group_name)}.{run_name}", 'predictions')
+    artifact = wandb.Artifact(f"{sanitize_name(group_name)}.{sanitize_name(run_name)}", 'predictions')
     artifact.add_dir(metrics_path.parent)
     wandb_run.log_artifact(artifact)
 
