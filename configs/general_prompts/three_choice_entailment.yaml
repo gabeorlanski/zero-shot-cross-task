@@ -120,6 +120,20 @@ prompt_metadata:
     original_task:
       - quail
     category: Multiple Choice
+
+  8ff27ccf-21d3-45c2-afe4-4531309dfb9f:
+    original_choices: Supports ||| Neither ||| Contradicts
+    original_task:
+      - ax
+    category: Fixed Choice
+
+  76803347-b0fd-4dd6-8a04-ab1a6ab314d5:
+    original_choices: Imply ||| Neither ||| Contradict
+    original_task:
+      - ax
+    category: Fixed Choice
+
+disabled:
   7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df:
     original_choices: Yes ||| Maybe ||| No
     original_task:
@@ -136,16 +150,6 @@ prompt_metadata:
     category: Multiple Choice
   3f6b9de8-616b-4a43-a077-e205a4c33a28:
     original_choices: Yes ||| Maybe ||| No
-    original_task:
-      - ax
-    category: Fixed Choice
-  76803347-b0fd-4dd6-8a04-ab1a6ab314d5:
-    original_choices: Imply ||| Neither ||| Contradict
-    original_task:
-      - ax
-    category: Fixed Choice
-  8ff27ccf-21d3-45c2-afe4-4531309dfb9f:
-    original_choices: Supports ||| Neither ||| Contradicts
     original_task:
       - ax
     category: Fixed Choice

@@ -220,6 +220,65 @@ templates:
       original_task: true
     name: always/sometimes/never MCQ
     reference: Adapted from v0.1
+  5a65c67f-ec9c-44f1-a610-63a7d1d016d0: !Template
+    answer_choices: Yes ||| Maybe ||| No
+    id: 5a65c67f-ec9c-44f1-a610-63a7d1d016d0
+    jinja: '{{premise}}
+          According to the above context, answer the following question.
+
+          {{hypothesis}}
+
+          A: {{ answer_choices[0] }}
+
+          B: {{ answer_choices[1] }}
+
+          C: {{ answer_choices[2] }}
+
+          |||
+
+          {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: false
+    name: context_description_question_text_MCQ
+    reference: ''
+  8ff27ccf-21d3-45c2-afe4-4531309dfb9f: !Template
+    answer_choices: Supports ||| Neither ||| Contradicts
+    id: 8ff27ccf-21d3-45c2-afe4-4531309dfb9f
+    jinja: 'Consider the premise:
+        {{premise}}
+        Does this premise support the following hypothesis?
+        {{hypothesis}}
+        Please answer {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
+        |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: support
+    reference: ''
+  76803347-b0fd-4dd6-8a04-ab1a6ab314d5: !Template
+    answer_choices: Imply ||| Neither ||| Contradict
+    id: 76803347-b0fd-4dd6-8a04-ab1a6ab314d5
+    jinja: '{{premise}}
+        Does the above sentence imply or contradict that "{{hypothesis}}"? Please answer
+
+        {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
+        |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: true
+    name: imply
+    reference: ''
+    
+disabled:
   7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df: !Template
     answer_choices: Yes ||| Maybe ||| No
     id: 7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df
@@ -238,30 +297,7 @@ templates:
       original_task: false
     name: context_description_question_text
     reference: ''
-  5a65c67f-ec9c-44f1-a610-63a7d1d016d0: !Template
-    answer_choices: Yes ||| Maybe ||| No
-    id: 5a65c67f-ec9c-44f1-a610-63a7d1d016d0
-    jinja: '{{premise}}
-        According to the above context, answer the following question.
 
-        {{hypothesis}}
-
-        A: {{ answer_choices[0] }}
-
-        B: {{ answer_choices[1] }}
-
-        C: {{ answer_choices[2] }}
-
-        |||
-
-        {{ answer_choices[label] }}'
-    metadata: !TemplateMetadata
-      choices_in_prompt: true
-      metrics:
-        - Accuracy
-      original_task: false
-    name: context_description_question_text_MCQ
-    reference: ''
   074de970-f1fd-4793-923e-88299502e2f0: !Template
     answer_choices: Entailment ||| Neutral ||| Contradiction
     id: 074de970-f1fd-4793-923e-88299502e2f0
@@ -311,39 +347,8 @@ templates:
       original_task: true
     name: consider
     reference: ''
-  76803347-b0fd-4dd6-8a04-ab1a6ab314d5: !Template
-    answer_choices: Imply ||| Neither ||| Contradict
-    id: 76803347-b0fd-4dd6-8a04-ab1a6ab314d5
-    jinja: '{{premise}}
-      Does the above sentence imply or contradict that "{{hypothesis}}"? Please answer
 
-      {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
-      |||
-      {{answer_choices[label]}}'
-    metadata: !TemplateMetadata
-      choices_in_prompt: true
-      metrics:
-        - Accuracy
-      original_task: true
-    name: imply
-    reference: ''
-  8ff27ccf-21d3-45c2-afe4-4531309dfb9f: !Template
-    answer_choices: Supports ||| Neither ||| Contradicts
-    id: 8ff27ccf-21d3-45c2-afe4-4531309dfb9f
-    jinja: 'Consider the premise:
-      {{premise}}
-      Does this premise support the following hypothesis?
-      {{hypothesis}}
-      Please answer {{ answer_choices[0] }}, {{ answer_choices[1] }}, or {{ answer_choices[2] }}.
-      |||
-      {{answer_choices[label]}}'
-    metadata: !TemplateMetadata
-      choices_in_prompt: true
-      metrics:
-        - Accuracy
-      original_task: true
-    name: support
-    reference: ''
+
   b5e0410e-ca91-472b-b00b-51e9cb7604c8: !Template
     answer_choices: Entailment ||| Neutral ||| Contradiction
     id: b5e0410e-ca91-472b-b00b-51e9cb7604c8
