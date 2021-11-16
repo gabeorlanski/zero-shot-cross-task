@@ -342,7 +342,8 @@ def evaluate_dataset_with_prompt(
         force_generation: bool = False,
         length_normalization: bool = False,
         use_only_correct_choice: bool = False,
-        num_proc: int = 1
+        num_proc: int = 1,
+        cuda_device: int = 0,
 ):
     tokenized, original, prompt = preprocess_dataset(
         task=task,
@@ -380,7 +381,7 @@ def evaluate_dataset_with_prompt(
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}")
-    device = torch.device(0)
+    device = torch.device(cuda_device)
 
     # TODO(gabeorlanski): Move generation into its own thing
     if choices is None or force_generation:

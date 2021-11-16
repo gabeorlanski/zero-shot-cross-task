@@ -9,6 +9,7 @@ beams: 1
 num_proc: 4
 split: ???
 run_name: ???
+cuda_device: 0
 
 debug: False
 use_general_prompts: False

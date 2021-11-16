@@ -57,6 +57,9 @@ def run(cfg: DictConfig):
     logger.info(f"Starting experiment with task {verbose_name}")
     logger.info(f"Using Split {split}")
 
+    if cfg['cuda_device'] < 0:
+        cfg['cuda_device'] = 'cpu'
+
     if not cfg.get('use_general_prompts'):
         prompts_to_use = load_prompts(
             prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']

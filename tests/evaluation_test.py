@@ -128,11 +128,12 @@ def test_generate_prediction_choices(tmpdir, prompt_name, length_normalized, for
     ).logits
 
     expected_choice_probs = torch.zeros((expected_logits.shape[0], len(choices)))
-    for choice, tokens in enumerate(choice_ids):
-        for t in tokens:
-            expected_choice_probs[:, choice] += expected_logits[:, :, t].sum(-1)
-        if length_normalized:
-            expected_choice_probs[:, choice] /= len(tokens)
+    for i in range(expected_logits.shape[0]):
+        for choice, tokens in enumerate(choice_ids):
+            for t in tokens:
+                expected_choice_probs[i, choice] += expected_logits[i, :, t].sum()
+            if length_normalized:
+                expected_choice_probs[i, choice] /= len(tokens)
 
     res_path = evaluation.generate_predictions_choices(
         Path(tmpdir),

@@ -104,7 +104,8 @@ def single_experiment(
         force_generation=cfg['evaluation'].get("force_generation", False),
         length_normalization=cfg['evaluation'].get('length_normalization', False),
         use_only_correct_choice=cfg['evaluation'].get("use_only_correct_choice", False),
-        num_proc=cfg.get('num_proc', 1)
+        num_proc=cfg.get('num_proc', 1),
+        cuda_device=cfg['cuda_device']
     )
     return original_ds, results_path
 
@@ -128,7 +129,7 @@ def run_experiments(
 
     logger.info(f"Loading model {cfg['model_name']}")
     # Load these here so we do not need to load them every time
-    model = model_cls.from_pretrained(cfg['model_name']).to(torch.device(0))
+    model = model_cls.from_pretrained(cfg['model_name']).to(torch.device(cfg['cuda_device']))
     model.eval()
     tokenizer = AutoTokenizer.from_pretrained(cfg['model_name'])
     completed = 0
