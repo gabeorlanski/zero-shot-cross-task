@@ -19,6 +19,8 @@ PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
 
 FILE_NAME_CLEANER = re.compile(r'[^\w]')
 DUPE_SPECIAL_CHARS = re.compile(r'([_\.\-])[_\.\-]+')
+LEADING_SPECIAL = re.compile(r'^[^A-Za-z0-9]')
+TRAILING_SPECIAL = re.compile(r'[^A-Za-z0-9]+$')
 
 
 def flatten(d, parent_key='', sep='_'):
@@ -33,8 +35,10 @@ def flatten(d, parent_key='', sep='_'):
 
 
 def sanitize_name(name: str) -> str:
-    cleaned = FILE_NAME_CLEANER.sub('_', unidecode(name).replace('/', '_')).replace(" ","_")
-    return DUPE_SPECIAL_CHARS.sub(r'\1', cleaned)
+    cleaned = FILE_NAME_CLEANER.sub('_', unidecode(name).replace('/', '_')).replace(" ", "_")
+    cleaned = DUPE_SPECIAL_CHARS.sub(r'\1', cleaned)
+    cleaned = LEADING_SPECIAL.sub('', cleaned)
+    return TRAILING_SPECIAL.sub('', cleaned)
 
 
 def all_equal(iterable):

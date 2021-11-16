@@ -7,6 +7,8 @@ import torch
 import math
 import json
 from src import evaluation
+from src.preprocessing import preprocess_dataset
+from promptsource.templates import DatasetTemplates, Template
 
 
 def test_generate_prediction_sequences(tmpdir):
@@ -77,37 +79,24 @@ def test_generate_prediction_sequences(tmpdir):
         assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
 
 
-@pytest.mark.parametrize("choices", [["Yes", "Maybe", "No"], ["Answer 1", "Answer 2", "Answer 3"]],
-                         ids=["Single Token", "Multi-Token"])
+@pytest.mark.parametrize("prompt_name", ["claim true/false/inconclusive", "guaranteed true"])
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
 @pytest.mark.parametrize("force_not_fixed", [True, False],
                          ids=["Force Not Fixed", "Not Fixed"])
-def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_not_fixed):
+def test_generate_prediction_choices(tmpdir, prompt_name, length_normalized, force_not_fixed):
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
-    original_dataset = load_dataset("anli", split="train_r1[:16]").map(
-        lambda d: {
-            "choices"   : choices,
-            "choice_ids": tokenizer(choices, add_special_tokens=False)['input_ids'],
-            **d
-        }
+    original_dataset = load_dataset("anli", split="train_r1[:16]")
+    prompt:Template = DatasetTemplates('anli')[prompt_name]
+    choices = prompt.get_fixed_answer_choices_list()
+
+    tokenized, ds, prompt = preprocess_dataset(
+        "Testing",
+        original_dataset,
+        tokenizer,
+        prompt,
+        num_proc=1
     )
-
-    def tok(p, h, label, ex_idx):
-
-        labels = tokenizer(choices[label])
-        source = tokenizer(f"{p} implies {h}")
-        return {
-            "idx"      : ex_idx, "labels": labels['input_ids'],
-            "input_len": sum(source['attention_mask']), **source
-        }
-
-    ds = original_dataset.map(  # type: ignore
-        tok,
-        input_columns=['premise', 'hypothesis', 'label'],
-        remove_columns=original_dataset.column_names,
-        with_indices=True
-    ).sort("input_len", reverse=True)
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
@@ -118,7 +107,7 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_n
     )
 
     data_loader = torch.utils.data.DataLoader(
-        ds,
+        tokenized,
         batch_size=16,
         collate_fn=collator,
         shuffle=False
@@ -128,14 +117,14 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_n
         lambda c: tokenizer(c, add_special_tokens=False)['input_ids'],
         choices)
     )
-    single_batch = collator(list(ds))
+    single_batch = collator(list(tokenized))
     model = T5ForConditionalGeneration.from_pretrained('t5-small')
     model.eval()
 
     expected_logits = model(
         input_ids=single_batch['input_ids'],
         attention_mask=single_batch['attention_mask'],
-        labels=single_batch["labels"]
+        labels=single_batch['choices_tokenized']
     ).logits
 
     expected_choice_probs = torch.zeros((expected_logits.shape[0], len(choices)))
@@ -151,7 +140,7 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_n
         model,
         tokenizer,
         torch.device("cpu"),
-        source_dataset=original_dataset,
+        source_dataset=ds,
         length_normalize=length_normalized,
         force_not_fixed_choice=force_not_fixed
     )
@@ -162,7 +151,7 @@ def test_generate_prediction_choices(tmpdir, choices, length_normalized, force_n
     result = list(map(json.loads, res_path.read_text("utf-8").splitlines(False)))
     assert len(result) == len(ds)
 
-    for i, v in enumerate(ds):
+    for i, v in enumerate(tokenized):
         assert set(result[i]['choice_logits'].keys()) == set(choices)
         assert result[i]['prediction'] == [
             max(choices, key=lambda x: result[i]['choice_logits'][x])

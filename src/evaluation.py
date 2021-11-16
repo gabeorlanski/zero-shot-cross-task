@@ -165,7 +165,7 @@ def generate_predictions_choices(
             generated = model(
                 input_ids=input_ids,
                 attention_mask=batch['attention_mask'].to(device),
-                labels=batch['labels'].to(device)
+                labels=batch['choices_tokenized'].to(device)
             )
             ex_idx = batch['idx']
 
@@ -315,6 +315,7 @@ def evaluate_dataset_with_prompt(
         num_beams: int,
         force_generation: bool = False,
         length_normalization: bool = False,
+        use_only_correct_choice: bool = False,
         num_proc: int = 1
 ):
     tokenized, original, prompt = preprocess_dataset(
@@ -322,7 +323,8 @@ def evaluate_dataset_with_prompt(
         dataset=dataset,
         tokenizer=tokenizer,
         prompt=prompt,
-        num_proc=num_proc
+        num_proc=num_proc,
+        use_only_correct_choice=use_only_correct_choice
     )
 
     choices = prompt.answer_choices

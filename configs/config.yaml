@@ -6,17 +6,23 @@ force: True
 model_name: "t5-small"
 batch_size: 8
 beams: 1
-force_generation: False
-disable_tracking: False
-length_normalization: False
 num_proc: 4
 split: ???
+run_name: ???
 
 debug: False
 use_general_prompts: False
+disable_tracking: False
+
+evaluation:
+  force_generation: False
+  length_normalization: False
+  use_only_correct_choice: False
+
 general_prompts:
   dir: prompts
   category_filter: null
+  answer_filter: null
 prompt_filter:
   name_list: null
   choice_list: null

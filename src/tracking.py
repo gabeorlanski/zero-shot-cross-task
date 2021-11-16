@@ -9,6 +9,7 @@ import wandb
 from scipy.special import softmax
 import pandas as pd
 import numpy as np
+from src.common import sanitize_name
 
 
 def get_prompt_info_for_wandb(
@@ -67,9 +68,9 @@ def create_run_cfg(
     cfg_dict = OmegaConf.to_object(cfg)
     cfg_dict['task']['general_prompts'] = None
     run_cfg = {
-        "base_model"          : cfg.get('base_model', False),
-        "length_normalization": cfg.get('length_normalization'),
-        "force_generation"    : cfg.get('force_generation'),
+        "base_model"          : cfg['evaluation'].get('base_model', False),
+        "length_normalization": cfg['evaluation'].get('length_normalization'),
+        "force_generation"    : cfg['evaluation'].get('force_generation'),
         **flatten(cfg_dict, sep='.')
     }
 
@@ -130,13 +131,15 @@ def create_predictions_df(predictions_path):
 
 
 def save_run_to_wandb(
+        run_name,
         run_cfg,
         tags,
         categories,
         group_name,
         name,
         metrics_path,
-        predictions_path
+        predictions_path,
+        is_debug
 ):
     assert metrics_path.exists()
     assert predictions_path.exists()
@@ -152,7 +155,7 @@ def save_run_to_wandb(
 
     wandb_run = wandb.init(
         project="zero-shot-eval",
-        job_type="eval",
+        job_type="evaluation" if not is_debug else "debugging",
         entity="gabeorlanski",
         group=group_name,
         name=name,
@@ -164,4 +167,8 @@ def save_run_to_wandb(
 
     pred_table = wandb.Table(dataframe=create_predictions_df(predictions_path))
     wandb_run.log({"predictions": pred_table})
+    artifact = wandb.Artifact(f"{sanitize_name(group_name)}.{run_name}", 'predictions')
+    artifact.add_dir(metrics_path.parent)
+    wandb_run.log_artifact(artifact)
+
     wandb_run.finish()

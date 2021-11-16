@@ -10,7 +10,8 @@ import json
 from src import preprocessing
 
 
-def test_preprocess_dataset():
+@pytest.mark.parametrize('only_correct', [True, False])
+def test_preprocess_dataset(only_correct):
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained('t5-small')
     prompt_task = 'anli'
@@ -24,18 +25,26 @@ def test_preprocess_dataset():
         tokenizer,
         prompt=prompt,
         batch_size=1,
-        num_proc=1
+        num_proc=1,
+        use_only_correct_choice=only_correct
     )
 
     assert used_prompt == prompt
 
     def tok(ex, idx):
         prompt_str, target_str = prompt.apply(ex)
+        choices = prompt.get_answer_choices_list(ex)
         labels_tokenized = tokenizer(target_str, max_length=256, truncation=True)
+        choice_tokenized = tokenizer(choices, max_length=256, truncation=True)['input_ids']
+        choice_tokenized = [x for e in choice_tokenized for x in e]
+        if only_correct:
+            choice_tokenized = labels_tokenized['input_ids']
         out = {
-            "idx"       : idx,
-            "labels"    : labels_tokenized['input_ids'],
-            "labels_len": len(labels_tokenized['input_ids']),
+
+            "idx"              : idx,
+            "labels"           : labels_tokenized['input_ids'],
+            "labels_len"       : len(labels_tokenized['input_ids']),
+            "choices_tokenized": choice_tokenized,
             **tokenizer(prompt_str, max_length=1024, truncation=True)
         }
         out["input_len"] = len(out['input_ids'])
@@ -52,3 +61,4 @@ def test_preprocess_dataset():
         assert result[i]['labels'] == expected['labels']
         assert result[i]['input_ids'] == expected['input_ids']
         assert result[i]['attention_mask'] == expected['attention_mask']
+        assert result[i]['choices_tokenized'] == expected['choices_tokenized']

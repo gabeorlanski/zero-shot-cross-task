@@ -193,6 +193,11 @@ def load_general_prompts(
         logger.critical(f"Missing prompts {expected_ids - found_ids} from the prompt config")
         raise ValueError(f"Missing {len(found_ids ^ expected_ids)} prompts")
     out = []
+
+    if answer_filter is not None:
+        answer_filter = list(map(set, answer_filter))
+        logger.info(f"Answer filter to use is {answer_filter}")
+
     prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
     for prompt in filter_prompts(prompt_templates, **prompt_filter_kwargs):
         current_prompt_metadata = prompt_metadata[prompt.id]
@@ -203,7 +208,12 @@ def load_general_prompts(
             logger.info(f"Skipping '{prompt.name}' as it is not in filtered category")
 
         for choices in prompt_cfg['possible_answer_choices']:
-            if answer_filter is not None and choices.split("|||") not in answer_filter:
+
+            # Check
+            if (
+                    answer_filter is not None
+                    and set(l.strip() for l in choices.split("|||")) not in answer_filter
+            ):
                 continue
 
             # Deepcopy to avoid saving a mutable object that will be incorrect

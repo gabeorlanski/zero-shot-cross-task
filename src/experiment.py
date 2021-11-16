@@ -8,7 +8,6 @@ from datasets import load_dataset
 import json
 import torch
 from transformers import T5ForConditionalGeneration, T5Model, AutoTokenizer
-from unidecode import unidecode
 from omegaconf import OmegaConf
 
 from src.evaluation import evaluate_dataset_with_prompt
@@ -102,8 +101,9 @@ def single_experiment(
         results_path=results_path,
         batch_size=cfg['batch_size'],
         num_beams=cfg['beams'],
-        force_generation=cfg.get("force_generation", False),
-        length_normalization=cfg.get('length_normalization', False),
+        force_generation=cfg['evaluation'].get("force_generation", False),
+        length_normalization=cfg['evaluation'].get('length_normalization', False),
+        use_only_correct_choice=cfg['evaluation'].get("use_only_correct_choice", False),
         num_proc=cfg.get('num_proc', 1)
     )
     return original_ds, results_path
@@ -119,7 +119,7 @@ def run_experiments(
         categories,
         seeds
 ):
-    if cfg.get('base_model', False):
+    if cfg['evaluation'].get('base_model', False):
         logger.info("Using base model.")
         model_cls = T5Model
     else:
@@ -143,23 +143,28 @@ def run_experiments(
 
         split_file_name = sanitize_name(split_name)
         group_name = sanitize_name(verbose_name)
+        if cfg['debug']:
+            group_name = f"DEBUG.{group_name}"
 
         # Some of the template names have absurd amount of bad characters.
         # So to remove them we need to first unidecode it, then clean it,
         # then remove duplicate characters
         prompt_fn = prompt_dict['name']
+
         if prompt_group != DEFAULT_PROMPT_GROUP:
             prompt_fn = f"{prompt_group}.{prompt_fn}"
 
+        prompt_fn = f"{sanitize_name(cfg['run_name'])}.{prompt_fn}"
+
         # Need to also add some special info if it is length normalized or if
         # generation was forced.
-        if cfg.get('base_model', False):
+        if cfg['evaluation'].get('base_model', False):
             prompt_fn += ".BaseModel"
 
-        if cfg['length_normalization']:
+        if cfg['evaluation']['length_normalization']:
             prompt_fn += ".LenNorm"
             logger.info("Using Length Normalization")
-        elif cfg['force_generation']:
+        elif cfg['evaluation']['force_generation']:
             prompt_fn += ".FG"
 
         experiment_name = f"{group_name}[{split_file_name}]:{prompt_fn}"
@@ -195,13 +200,15 @@ def run_experiments(
             wandb_group_name = f"{verbose_name}[{split_file_name}]"
             logger.info(f"Saving {prompt_fn} to wandb under group {wandb_group_name}")
             save_run_to_wandb(
+                run_name=prompt_fn,
                 run_cfg=run_cfg,
                 tags=tags,
                 categories=categories,
                 group_name=wandb_group_name,
                 name=prompt_fn,
                 metrics_path=results_path.joinpath("metrics.json"),
-                predictions_path=results_path.joinpath("predictions.jsonl")
+                predictions_path=results_path.joinpath("predictions.jsonl"),
+                is_debug=cfg['debug']
             )
 
         completed += 1

@@ -28,7 +28,7 @@ def run(cfg: DictConfig):
         torch_seed=1999
     )
 
-    if cfg['length_normalization'] and cfg['force_generation']:
+    if cfg['evaluation']['length_normalization'] and cfg['evaluation']['force_generation']:
         raise ValueError("Cannot have both 'length_normalization' and 'force_generation'")
 
     # Get the task config
@@ -66,7 +66,8 @@ def run(cfg: DictConfig):
             prompt_dir=PROJECT_ROOT.joinpath(cfg["general_prompts"]['dir']),
             prompt_cfg=task_cfg['general_prompts'],
             category_filter=cfg['general_prompts']['category_filter'],
-            prompt_filter_kwargs=cfg['prompt_filter']
+            prompt_filter_kwargs=cfg['prompt_filter'],
+            answer_filter=cfg['general_prompts']['answer_filter']
         )
     if cfg["debug"]:
         logger.warning(f"Debugging enbaled, only using a single prompt")
