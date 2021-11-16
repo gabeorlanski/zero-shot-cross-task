@@ -277,7 +277,7 @@ templates:
       original_task: true
     name: imply
     reference: ''
-    
+
 disabled:
   7b0ce9fa-6aa0-4210-ab6c-1edd4b2f43df: !Template
     answer_choices: Yes ||| Maybe ||| No
