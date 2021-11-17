@@ -1,10 +1,5 @@
 import pytest
-from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
-from datasets import load_dataset
 from pathlib import Path
-import torch
-import math
-import json
 from src import experiment
 from omegaconf import OmegaConf
 from unittest.mock import patch
@@ -18,16 +13,17 @@ def test_single_experiment(tmpdir, force, existing_dir, subset):
     tmpdir_path = Path(tmpdir)
 
     cfg = OmegaConf.create({
-        "task"      : "Test",
-        "model_name": "Test",
-        "force"     : force,
-        "batch_size": 8,
-        "beams"     : 4,
-        "evaluation": {
+        "task"       : "Test",
+        "model_name" : "Test",
+        "force"      : force,
+        "batch_size" : 8,
+        "beams"      : 4,
+        "evaluation" : {
             "force_generation"    : False,
             "length_normalization": False,
         },
-        "num_proc"  : 1
+        "num_proc"   : 1,
+        "cuda_device": 0
 
     })
 

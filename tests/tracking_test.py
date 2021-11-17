@@ -15,14 +15,19 @@ from src import tracking
 from src.common import sanitize_name
 
 
-def test_create_predictions_df(tmpdir):
+def test_get_metrics_for_wandb(tmpdir):
     pred_path = Path(tmpdir).joinpath("preds.jsonl")
+    met_path = Path(tmpdir).joinpath("metrics.json")
+    with met_path.open("w", encoding='utf-8') as f:
+        json.dump({"accuracy": 100}, f)
+
     with pred_path.open('w', encoding='utf-8') as f:
         data = [
             {
                 "id"           : 23, "prediction": ["A"],
                 "target"       : "B",
                 "input"        : "Abc",
+                "choices"      : ["A", "B", "C"],
                 "choice_logits": {"A": -1, "B": -4, "C": -5}
             },
             {
@@ -31,6 +36,7 @@ def test_create_predictions_df(tmpdir):
                 "C"],
                 "target"       : "No",
                 "input"        : "DEF",
+                "choices"      : [],
                 "choice_logits": {}
             },
             {
@@ -40,36 +46,40 @@ def test_create_predictions_df(tmpdir):
                 ],
                 "target"       : "Yes",
                 "input"        : "GHI",
+                "choices"      : [],
                 "choice_logits": {}
             }
         ]
         for l in data:
             f.write(json.dumps(l) + "\n")
 
-    result = tracking.get_metrics_for_wandb(pred_path)
-    import numpy as np
-    normalized = [0.45, 0.3, 0.25]
+    metrics, result = tracking.get_metrics_for_wandb(met_path, pred_path)
+
+    assert set(metrics) == {
+        "c0_logit_mean", "c1_logit_mean", "c2_logit_mean",
+        "c0_logit_std", "c1_logit_std", "c2_logit_std",
+        "c0_logit_median", "c1_logit_median", "c2_logit_median",
+        "accuracy"
+    }
+    assert metrics['accuracy'] == 100
 
     expected = pd.DataFrame.from_records(
         [{
-            "id"                 : 23,
-            "prediction"         : "A",
-            "other_beams"        : [],
-            "target"             : "B",
-            "input"              : "Abc",
-            "choice_count"       : 3,
-            "choice_0"           : "A",
-            "choice_1"           : "B",
-            "choice_2"           : "C",
-            "c0_logit"           : -1,
-            "c1_logit"           : -4,
-            "c2_logit"           : -5,
-            "c0_logit_normalized": normalized[0],
-            "c1_logit_normalized": normalized[1],
-            "c2_logit_normalized": normalized[2],
-            "target_id"          : 1,
-            "pred_id"            : 0,
-            "correct"            : False
+            "id"          : 23,
+            "prediction"  : "A",
+            "other_beams" : [],
+            "target"      : "B",
+            "input"       : "Abc",
+            "choice_count": 3,
+            "choice_0"    : "A",
+            "choice_1"    : "B",
+            "choice_2"    : "C",
+            "c0_logit"    : -1,
+            "c1_logit"    : -4,
+            "c2_logit"    : -5,
+            "target_id"   : 1,
+            "pred_id"     : 0,
+            "correct"     : False
 
         }, {
             "id"          : 50,

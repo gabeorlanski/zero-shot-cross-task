@@ -19,11 +19,13 @@ evaluation:
   force_generation: False
   length_normalization: False
   use_only_correct_choice: False
+  lowercase_choices: False
 
 general_prompts:
   dir: prompts
   category_filter: null
   answer_filter: null
+
 prompt_filter:
   name_list: null
   choice_list: null

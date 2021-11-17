@@ -138,7 +138,7 @@ def generate_predictions_choices(
         device,
         source_dataset,
         length_normalize=False,
-        force_not_fixed_choice=False
+        force_not_fixed_choice=False,
 ):
     """
     Generate predictions when using answer choices.
@@ -198,7 +198,7 @@ def generate_predictions_choices(
                         # Bug w/ pytorch where tensor /= len(list) does not
                         # give correct value
                         choice_len = len(choice)
-                        choice_logits = choice_logits/choice_len
+                        choice_logits = choice_logits / choice_len
 
                     choice_probs[:, j] = choice_logits
 
@@ -345,6 +345,7 @@ def evaluate_dataset_with_prompt(
         force_generation: bool = False,
         length_normalization: bool = False,
         use_only_correct_choice: bool = False,
+        lowercase_choices: bool = False,
         num_proc: int = 1,
         cuda_device: int = 0,
 ):
@@ -354,7 +355,8 @@ def evaluate_dataset_with_prompt(
         tokenizer=tokenizer,
         prompt=prompt,
         num_proc=num_proc,
-        use_only_correct_choice=use_only_correct_choice
+        use_only_correct_choice=use_only_correct_choice,
+        lowercase_choices=lowercase_choices
     )
 
     choices = prompt.answer_choices
@@ -382,8 +384,9 @@ def evaluate_dataset_with_prompt(
         shuffle=False
     )
 
-    logger.info(f"Max label length is {max(tokenized['labels_len'])}")
-    logger.info(f"Max Input length is {max(tokenized['input_len'])}")
+    logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
+    logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
+    logger.info(f"Max Decoder Input length is {max(tokenized['choices_tokenized'])}.")
     device = torch.device(cuda_device)
 
     # TODO(gabeorlanski): Move generation into its own thing

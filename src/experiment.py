@@ -104,6 +104,7 @@ def single_experiment(
         force_generation=cfg['evaluation'].get("force_generation", False),
         length_normalization=cfg['evaluation'].get('length_normalization', False),
         use_only_correct_choice=cfg['evaluation'].get("use_only_correct_choice", False),
+        lowercase_choices=cfg['evaluation'].get('lowercase_choices', False),
         num_proc=cfg.get('num_proc', 1),
         cuda_device=cfg['cuda_device']
     )

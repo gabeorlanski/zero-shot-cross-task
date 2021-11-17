@@ -10,8 +10,9 @@ import json
 from src import preprocessing
 
 
-@pytest.mark.parametrize('only_correct', [True, False])
-def test_preprocess_dataset(only_correct):
+@pytest.mark.parametrize('only_correct', [True, False], ids=["OnlyCorrect", "Normal"])
+@pytest.mark.parametrize('lowercase_choices', [True, False], ids=["LowerCase", "NormalCase"])
+def test_preprocess_dataset(only_correct, lowercase_choices):
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained('t5-small')
     prompt_task = 'anli'
@@ -26,37 +27,73 @@ def test_preprocess_dataset(only_correct):
         prompt=prompt,
         batch_size=1,
         num_proc=1,
-        use_only_correct_choice=only_correct
+        use_only_correct_choice=only_correct,
+        lowercase_choices=lowercase_choices
     )
 
     assert used_prompt == prompt
 
-    def tok(ex, idx):
+    def get_prompt_tok(ex, id):
         prompt_str, target_str = prompt.apply(ex)
         choices = prompt.get_answer_choices_list(ex)
-        labels_tokenized = tokenizer(target_str, max_length=256, truncation=True)
-        choice_tokenized = tokenizer(choices, max_length=256, truncation=True)['input_ids']
-        choice_tokenized = [x for e in choice_tokenized for x in e]
+
+        choices_to_tokenize = choices
+        if lowercase_choices:
+            choices_to_tokenize = list(map(lambda c: c.lower(), choices))
+
+        choice_tokenized = tokenizer(
+            choices_to_tokenize,
+            max_length=256,
+            truncation=True,
+            add_special_tokens=False
+        )['input_ids']
+
+        ex['prompt'] = prompt_str
+        ex['output'] = target_str
+        ex['choices'] = choices
+        ex['choice_ids'] = choice_tokenized
+        return ex
+
+    def tok(ex, idx):
+        choices_tokenized = tokenizer(
+            ex['choices'] if not lowercase_choices else list(
+                map(lambda c: c.lower(), ex['choices'])),
+            max_length=256,
+            truncation=True
+        )['input_ids']
+        choice_tokenized = [x for e in choices_tokenized for x in e]
+        labels_tokenized = tokenizer(ex['output'], max_length=256, truncation=True)
         if only_correct:
             choice_tokenized = labels_tokenized['input_ids']
-        out = {
 
+        out = {
             "idx"              : idx,
             "labels"           : labels_tokenized['input_ids'],
             "labels_len"       : len(labels_tokenized['input_ids']),
             "choices_tokenized": choice_tokenized,
-            **tokenizer(prompt_str, max_length=1024, truncation=True)
+            **tokenizer(ex['prompt'], max_length=1024, truncation=True)
         }
         out["input_len"] = len(out['input_ids'])
         return out
 
-    expected_ds = ds.map(  # type:ignore
+    expected_normal_ds = ds.map(
+        get_prompt_tok,
+        with_indices=True
+    )
+
+    for i, expected in enumerate(expected_normal_ds):
+        assert set(original[i]) == set(expected)
+        for k, v in expected.items():
+            assert k in original[i], k
+            assert original[i][k] == v, f"result[{i}][{k}]"
+
+    expected_toked_ds = expected_normal_ds.map(  # type:ignore
         tok,
-        remove_columns=ds.column_names,
+        remove_columns=expected_normal_ds.column_names,
         with_indices=True
     ).sort('input_len', reverse=True)
 
-    for i, expected in enumerate(expected_ds):
+    for i, expected in enumerate(expected_toked_ds):
         assert result[i]['labels_len'] == expected['labels_len']
         assert result[i]['labels'] == expected['labels']
         assert result[i]['input_ids'] == expected['input_ids']
