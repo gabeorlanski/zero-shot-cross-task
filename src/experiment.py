@@ -83,8 +83,8 @@ def single_experiment(
         working_dir=working_dir,
         **seeds
     )
-    logger.info(f"Starting experiment with name '{experiment_name}")
-    logger.info(f"Loading task {cfg['task']} with model {cfg['model_name']}")
+    logger.info(f"Starting experiment with name '{experiment_name} "
+                f"with model {cfg['model_name']}")
 
     # Load the correct dataset for this task.
     if subset:

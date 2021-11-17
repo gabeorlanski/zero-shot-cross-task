@@ -386,7 +386,11 @@ def evaluate_dataset_with_prompt(
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
-    logger.info(f"Max Decoder Input length is {max(tokenized['choices_tokenized'])}.")
+    logger.info(f"Max Decoder Input length is {max(map(len, tokenized['choices_tokenized']))}.")
+
+    logger.info(f"Length Normalization = {length_normalization}")
+    logger.info(f"Force Generation = {force_generation}")
+    logger.info(f"Lowercase Choices = {lowercase_choices}")
     device = torch.device(cuda_device)
 
     # TODO(gabeorlanski): Move generation into its own thing
