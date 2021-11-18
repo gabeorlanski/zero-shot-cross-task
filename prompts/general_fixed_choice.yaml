@@ -8,12 +8,11 @@ templates:
     jinja: 'The following conversation is a negotiation on craigslist. The first speaker
         is the buyer, and the second speaker is the seller.
         {{ input_sequence }}
-        From the seller''s point of view, this deal could be considered
+        From the sellers point of view, this deal could be considered
         ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: false
       metrics:
-        - Span Squad
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
@@ -31,7 +30,6 @@ templates:
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
-        - Span Squad
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
@@ -42,14 +40,13 @@ templates:
     choice_string: '"yes", "no", "neither",  or "unknown"'
     id: 78d1b487-c535-4a0d-ae49-055d321db3fd
     jinja: 'The following conversation is a negotiation on craigslist. The first speaker
-       is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else N/A}}.
+       is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}.
        {{ input_sequence }}
        Was this a good deal for the seller? Answer {{ choice_string }}.
        ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
-        - Span Squad
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
@@ -59,24 +56,423 @@ templates:
       there is a tie)
   a1dbb258-2e5c-4160-986b-46fc03546965: !Template
     answer_choices: '{{ choices | join("|||") }}'
-      choice_string: 'a) the buyer
-        b) the seller
-        c) neither - it is a fair compromise
-        d) unknown'
+    choice_string: 'a) the buyer
+      b) the seller
+      c) neither - it is a fair compromise
+      d) unknown'
     id: a1dbb258-2e5c-4160-986b-46fc03546965
     jinja: 'The following conversation is a negotiation on craigslist. The first speaker
-        is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0}}.
+        is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and (additional_inputs|length) > 0 else "N/A"}}.
         {{ input_sequence }}
         Question: Which party got the better deal? Choose from:
         {{choice_string}}
         Answer:
-        ||| {{answer_choices["label"]}}'
+        ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
-        - Span Squad
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: True
     name: best deal
     reference: explicitly asks model which party got the best deal
+  2283cebf-988e-4bff-96bf-982a09963e49: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: "N/A"
+    id: 2283cebf-988e-4bff-96bf-982a09963e49
+    jinja: 'Decide whether the question "{{ choice_string }}" is answerable solely based
+        on this passage:
+        {{ input_sequence }}
+        Answer: ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: zest
+      is_mcq: false
+    name: answerable_or_not
+    reference: 'Decide whether this question is answerable. Metric: F1 Score with
+        modified precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
+  6f694e45-1d17-4067-a1f6-7dae89c148db: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 6f694e45-1d17-4067-a1f6-7dae89c148db
+    jinja: 'My daughter is asking me a question about {{domain if domain is defined else "questions"}}:
+        "{{ choice_string }}"
+        Here''s what I found on the internet: {{ input_sequence }}
+        What''s the answer?
+        Answer: |||{{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: zest
+      is_mcq: false
+    name: ask_question_as_kid
+    reference: 'Answer the questions of a curious kid. Metric: F1 Score with modified
+        precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
+  7425232a-9880-428c-9ddc-4070e50e22cc: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 7425232a-9880-428c-9ddc-4070e50e22cc
+    jinja: 'Answer the question based on the context. If the question is not answerable
+        with the context alone, say "Can''t answer".
+        {{ choice_string }}
+        {{input_sequence}}||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: zest
+      is_mcq: false
+    name: gpt3_instruct_format
+    reference: 'Template format from GPT3 instruct. Metric: F1 Score with modified
+        precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
+  cd563834-49ee-495d-ac46-99f0264e58d5: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: cd563834-49ee-495d-ac46-99f0264e58d5
+    jinja: 'I am giving my students the following question about {{domain if domain is defined else "questions"}}: "{{ input_sequence }}".
+        What should be their answer based on this context: {{ choice_string }}|||{{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: zest
+      is_mcq: false
+    name: ask_question_as_teacher
+    reference: 'I don''t know answer. Metric: F1 Score with modified precision and
+        recall, please refer to the paper https://arxiv.org/abs/2011.08115'
+  091ba88e-d208-4a3a-ada7-d9698aeb5568: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 091ba88e-d208-4a3a-ada7-d9698aeb5568
+    jinja: 'You will receive full credit if you solve the following word problem:
+        {{ input_sequence }}
+        {{ choice_string }}|||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: math_qa
+      is_mcq: true
+    name: choose_correct_variant
+    reference: 'Variant of choose_correct. '
+  6312d599-8ca4-4bc8-a76f-81f2e36727bd: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 6312d599-8ca4-4bc8-a76f-81f2e36727bd
+    jinja: 'Given the following problem:
+        {{input_sequence}}
+        ===
+        and the following options, select the correct option
+        {{ choice_string }}|||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: math_qa
+      is_mcq: true
+    name: choose_correct_og
+    reference: The template asks the model to choose the correct answer.
+  8c4c81cc-ca54-45fc-a69a-4b97a5f2b465: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 8c4c81cc-ca54-45fc-a69a-4b97a5f2b465
+    jinja: "Solve the problem by choosing the correct answer: \n{{input_sequence}}\n\n{{choice_string}}|||\n\
+        {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: math_qa
+      is_mcq: true
+    name: pick_the_correct
+    reference: The template picks the correct the answer choice
+  06719321-62e7-4f6e-8f95-464cd2b5ca5c: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '"negative", "neutral", "positive"'
+    id: 06719321-62e7-4f6e-8f95-464cd2b5ca5c
+    jinja: 'Which word between {{choice_string}}
+        would you use to describe the effect of the following news on the related share
+        prices?
+        {{input_sequence}} |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: financial_phrasebank
+      is_mcq: false
+    name: share_price_option
+    reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
+  0beba048-f949-4034-83b6-a3e0e7363f46: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 0beba048-f949-4034-83b6-a3e0e7363f46
+    jinja: 'What is the sentiment of the sentence?
+        {{input_sequence}} |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: financial_phrasebank
+      is_mcq: false
+    name: sentiment
+    reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
+  461efe04-6883-41e8-80f0-e722a75260fe: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 461efe04-6883-41e8-80f0-e722a75260fe
+    jinja: 'What does the following argument mean for the complementary industries?
+        {{input_sequence}} |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: financial_phrasebank
+      is_mcq: false
+    name: complementary_industries
+    reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
+  5fa16d31-b513-480d-bd1b-1fa8c182fb76: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '"bullish", "neutral", or "bearish"'
+    id: 5fa16d31-b513-480d-bd1b-1fa8c182fb76
+    jinja: 'Should an investor be {{choice_string}}
+        given the following news?
+        {{input_sequence}} |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: financial_phrasebank
+      is_mcq: false
+    name: bullish_neutral_bearish
+    reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
+  13c02904-e4e2-4b4f-b115-44b437d22041: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 13c02904-e4e2-4b4f-b115-44b437d22041
+    jinja: '{{input_sequence}}
+        ===
+        Write a summary of the text above : |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: xsum
+      is_mcq: false
+    name: DOC_write_summary_of_above
+    reference: ''
+  3d388a1e-3361-407b-baa7-61397cc58382: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 3d388a1e-3361-407b-baa7-61397cc58382
+    jinja: '{{ input_sequence }}
+        How would you rephrase that in a few words? ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: xsum
+      is_mcq: false
+    name: DOC_how_would_you_rephrase_few_words
+    reference: http://gptprompts.wikidot.com/prompt:summarization
+  4cfe4126-b9f5-44eb-8a98-973987c5f32e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 4cfe4126-b9f5-44eb-8a98-973987c5f32e
+    jinja: 'My college roommate asked me what this article means:
+       {{input_sequence}}
+       So I recapped it in layman''s terms: ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: xsum
+      is_mcq: false
+    name: college_roommate_asked_DOC_so_I_recap
+    reference: http://gptprompts.wikidot.com/prompt:summarization
+  9a3f617f-628f-4fa5-9b74-47d0b166a487: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 9a3f617f-628f-4fa5-9b74-47d0b166a487
+    jinja: 'First, please read the article below.
+        {{input_sequence}}
+        Now, can you write me an extremely short abstract for it?  |||  {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: xsum
+      is_mcq: false
+    name: read_below_DOC_write_abstract
+    reference: ''
+  1ee5ddef-fffb-4b73-a2f7-f600ffac63cb: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 1ee5ddef-fffb-4b73-a2f7-f600ffac63cb
+    jinja: '{{input_sequence}}...
+        What comes after the ellipses? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: craffel/openai_lambada
+      is_mcq: false
+    name: ellipses
+    reference: ''
+  4f08e9d4-bcff-4bc0-9902-87c497625d17: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 4f08e9d4-bcff-4bc0-9902-87c497625d17
+    jinja: 'Fill in the blank:
+        {{ input_sequence }} ____. ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: craffel/openai_lambada
+      is_mcq: false
+    name: GPT-3 style
+    reference: Brown et al.
+  774b4349-0524-4a34-881b-b344f8f5c34e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 774b4349-0524-4a34-881b-b344f8f5c34e
+    jinja: 'This story got cut short. What comes next?
+       {{ input_sequence }} ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: craffel/openai_lambada
+      is_mcq: false
+    name: what comes next
+    reference: ''
+  2bca0197-e3d4-4870-bd95-178411e52e09: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 2bca0197-e3d4-4870-bd95-178411e52e09
+    jinja: 'Use the reference abstracts to generate related work:
+        {{ input_sequence }}  |||
+        {{  answer_choices[label]  }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: multi_x_science_sum
+      is_mcq: false
+    name: ref_relatedwork
+    reference: ''
+  3bd082cb-4e28-4eb7-9fa2-dd03f1f86219: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 3bd082cb-4e28-4eb7-9fa2-dd03f1f86219
+    jinja: 'Given the abstract of a paper, provide some related work for readers to
+       learn further
+       {{ input_sequence }}  |||
+        {{  answer_choices[label]  }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: multi_x_science_sum
+      is_mcq: false
+    name: abstract_relatedwork
+    reference: ''
+  af4d550e-54b8-471e-97af-2b2c50a1382e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: af4d550e-54b8-471e-97af-2b2c50a1382e
+    jinja: 'Use the related work to guess the abstract:
+        {{ input_sequence }}  |||
+        {{  answer_choices[label]  }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: multi_x_science_sum
+      is_mcq: false
+    name: relatedwork_abstract
+    reference: ''
+  202246b0-3f82-42b9-bc8d-d36997b5f2cb: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '{{ choices | join(", ") }}'
+    id: 202246b0-3f82-42b9-bc8d-d36997b5f2cb
+    jinja: "Given the sentence, {{input_sequence}}\n\nOut of the options {{choice_string}}, \n\nWhat is the semantic relations between the two nominals\
+        \ (nouns or noun phrases) e1 and e2 in the sentence: ||| {{ answer_choices[label]\
+        \ }}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: sem_eval_2010_task_8
+      is_mcq: false
+    name: semantic relations with options
+    reference: out of options; macro-averaged F1-score official metric
+  5d7123a8-4ed4-42ce-bcfb-4af415962efc: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '{{ choices | join(", ") }}'
+    id: 5d7123a8-4ed4-42ce-bcfb-4af415962efc
+    jinja: 'How semantically related are the two nominals in the sentence, {{input_sequence}}
+        Please answer {{choice_string}}:
+        ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: sem_eval_2010_task_8
+      is_mcq: false
+    name: semantically related nominials with options
+    reference: 'please answer; official metric:  macro-averaged F1-score'
+  c97e7bbf-b7f0-4cee-ada5-431ce7d606cc: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '{{ choices | join(", ") }}'
+    id: c97e7bbf-b7f0-4cee-ada5-431ce7d606cc
+    jinja: 'Given the sentence, {{ input_sequence }}
+        ===
+        What is the semantic relations between the two nominals (nouns or noun phrases)
+        e1 and e2 in the sentence: ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: sem_eval_2010_task_8
+      is_mcq: false
+    name: semantic relations nominials without options
+    reference: mention e1,e2 after; macro-averaged F1-score official metric
+  bb089312-23cb-475d-93b5-952781bc6be4: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '{{ choices | join(", ") }}'
+    id: bb089312-23cb-475d-93b5-952781bc6be4
+    jinja: 'Question: {{ input_sequence }}\nAnswer: {{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}\n\nKnowing that the question can be ambiguous, can you perform question disambiguation by generating a question such that \"{{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}\" is a more suitable answer? If you deem that the question is not ambiguous, generate the same question given above. |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: ambig_qa
+      is_mcq: false
+    name: perform_question_disambiguation
+    reference: ''
+  09880e1a-0fcc-49dc-8462-b6603e15d691: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '{{ choices | join(", ") }}'
+    id: 09880e1a-0fcc-49dc-8462-b6603e15d691
+    jinja: "What are the possible answers to the question \"{{input_sequence}}\"? Use semi-colons to separate your answers if you have multiple answers.\n\n|||
+        {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: ambig_qa
+      is_mcq: false
+    name: answer_prediction_all_answers_interrogative
+    reference: ''

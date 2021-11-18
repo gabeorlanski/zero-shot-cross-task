@@ -1,15 +1,11 @@
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from tqdm import tqdm
 import torch
 from t5.evaluation import metrics as mt
 import json
-from transformers import DataCollatorForSeq2Seq, PreTrainedModel, PreTrainedTokenizer
-from datasets import Dataset
-from promptsource.templates import Template
 import numpy as np
-from src.preprocessing import preprocess_dataset
 from src.common import all_equal
 
 logger = logging.getLogger(__name__)
@@ -267,7 +263,7 @@ def generate_predictions_choices(
     return pred_path
 
 
-def evaluate(task, prediction_path, metrics, out_path):
+def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
     """
     Evaluate a prediction file based on given metrics.
     Args:
@@ -288,33 +284,67 @@ def evaluate(task, prediction_path, metrics, out_path):
 
     targets = []
     predictions = []
+    targets_ints = []
+    preds_ints = []
     input_lens = []
-    choices_probs = {}
+    class_to_id = {}
+    if fixed_choices:
+        for c in fixed_choices:
+            class_to_id[c] = len(class_to_id)
+
     pred_dicts = map(lambda l: json.loads(l), prediction_path.read_text('utf-8').splitlines(False))
     pbar = tqdm(desc="Reading")
     for line in pred_dicts:
         target = line['target']
+
         targets.append(target)
         predictions.append(line['prediction'][0])
+
+        if fixed_choices:
+            targets_ints.append(class_to_id[target])
+            preds_ints.append(class_to_id[line['prediction'][0]])
+
         input_lens.append(len(line['input']))
-        if line['choice_logits']:
-            if target not in choices_probs:
-                choices_probs[target] = {}
-            for choice, prob in line['choice_logits'].items():
-                if choice not in choices_probs[target]:
-                    choices_probs[target][choice] = [prob]
-                else:
-                    choices_probs[target][choice].append(prob)
+
         pbar.update()
     pbar.close()
 
     logger.info("Final Metrics:")
     final_metrics = {}
+    targets_list_of_lists = [[t] for t in targets]
+
     for m in metrics:
-        for k, v in METRICS_DICT[m](targets, predictions).items():
+        # Some metrics require targets be a list of lists
+        if m in ["Squad", "Trivia QA"]:
+            use_targets = targets_list_of_lists
+        else:
+            use_targets = targets
+
+        for k, v in METRICS_DICT[m](use_targets, predictions).items():
             met_name = f"{k}:"
             logger.info(f"{met_name:>20} {v:.3f}")
             final_metrics[k] = v
+
+    if fixed_choices is not None:
+        f1_metrics = mt.sklearn_metrics_wrapper(
+            "fbeta_score",
+            metric_dict_str="f1_by_class",
+            metric_post_process_fn=lambda x: 100 * x,
+            beta=1,
+            labels=range(len(fixed_choices)),
+            average=None
+        )(
+            np.array(targets_ints), np.array(preds_ints)
+        )
+        for l, f1 in enumerate(f1_metrics['f1_by_class']):
+            met_name = f"f1_{fixed_choices[l]}:"
+            logger.info(f"{met_name:>20} {f1:.3f}")
+            final_metrics[met_name] = f1
+        final_metrics.update(mt.mean_multiclass_f1(len(fixed_choices))(
+            np.array(targets_ints), np.array(preds_ints)
+        ))
+        logger.info(f"{'mean_%dclass_f1'%len(fixed_choices):>20} "
+                    f"{final_metrics['mean_%dclass_f1'%len(fixed_choices)]:.3f}")
 
     final_metrics['input_len/mean'] = np.mean(input_lens)
     final_metrics['input_len/median'] = np.median(input_lens)
@@ -331,98 +361,3 @@ def evaluate(task, prediction_path, metrics, out_path):
         fp.write(json.dumps(final_metrics, indent=True))
 
     return metrics_file
-
-
-def evaluate_dataset_with_prompt(
-        task: str,
-        dataset: Dataset,
-        prompt: Template,
-        tokenizer: PreTrainedTokenizer,
-        model: PreTrainedModel,
-        results_path: Path,
-        batch_size: int,
-        num_beams: int,
-        force_generation: bool = False,
-        length_normalization: bool = False,
-        use_only_correct_choice: bool = False,
-        lowercase_choices: bool = False,
-        num_proc: int = 1,
-        cuda_device: int = 0,
-):
-    tokenized, original, prompt = preprocess_dataset(
-        task=task,
-        dataset=dataset,
-        tokenizer=tokenizer,
-        prompt=prompt,
-        num_proc=num_proc,
-        use_only_correct_choice=use_only_correct_choice,
-        lowercase_choices=lowercase_choices
-    )
-
-    choices = prompt.answer_choices
-    logger.info(f"Choices found: {choices}")
-    max_choices_found = max(map(len, original['choices']))
-    min_choices_found = min(map(len, original['choices']))
-    logger.info(f"Max # Choices found: {max_choices_found}")
-    logger.info(f"Min # Choices found: {min_choices_found}")
-    if max_choices_found != min_choices_found:
-        logger.error("Variable number of choices found across examples. This is not supported.")
-        raise ValueError("Variable number of choices found across examples. This is not supported.")
-
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=4,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
-
-    data_loader = torch.utils.data.DataLoader(
-        tokenized,
-        batch_size=batch_size,
-        collate_fn=collator,
-        shuffle=False
-    )
-
-    logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
-    logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
-    logger.info(f"Max Decoder Input length is {max(map(len, tokenized['choices_tokenized']))}.")
-
-    logger.info(f"Length Normalization = {length_normalization}")
-    logger.info(f"Force Generation = {force_generation}")
-    logger.info(f"Lowercase Choices = {lowercase_choices}")
-    device = torch.device(cuda_device)
-
-    # TODO(gabeorlanski): Move generation into its own thing
-    if choices is None or force_generation:
-        result_file = generate_prediction_sequences(
-            out_path=results_path,
-            data_loader=data_loader,
-            model=model,
-            device=device,
-            tokenizer=tokenizer,
-            max_gen_len=max(tokenized['labels_len']) + 32,
-            generator_kwargs={
-                "num_beams"           : num_beams,
-                "num_return_sequences": num_beams
-            }
-        )
-    else:
-        result_file = generate_predictions_choices(
-            out_path=results_path,
-            data_loader=data_loader,
-            model=model,
-            device=device,
-            tokenizer=tokenizer,
-            source_dataset=original,
-            length_normalize=length_normalization
-        )
-    logger.info("Finished generating the dataset with the prompt.")
-    logger.info(f"Beginning evaluation of the predictions.")
-    evaluate(
-        task,
-        result_file,
-        metrics=prompt.metadata.metrics or ["Accuracy"],
-        out_path=results_path
-    )
-    return original

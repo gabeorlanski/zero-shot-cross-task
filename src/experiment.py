@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 import logging
 from pathlib import Path
 import shutil
@@ -7,13 +7,16 @@ import numpy
 from datasets import load_dataset
 import json
 import torch
+from transformers import DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, T5Model, AutoTokenizer
 from omegaconf import OmegaConf
 
-from src.evaluation import evaluate_dataset_with_prompt
+from src.evaluation import evaluate, generate_prediction_sequences, generate_predictions_choices
 from src.tracking import create_run_cfg, save_run_to_wandb
 from src.common import sanitize_name
 from src.prompt_map import DEFAULT_PROMPT_GROUP
+from src.preprocessors import TaskPreprocessor
+from src.preprocessing import preprocess_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +78,8 @@ def single_experiment(
         prompt_file_name,
         seeds,
         subset=None,
-        working_dir=None
+        working_dir=None,
+        preprocessor: Optional[TaskPreprocessor] = None
 ):
     results_path = prepare_environment(
         prompt_name=prompt_file_name,
@@ -92,23 +96,86 @@ def single_experiment(
     else:
         dataset = load_dataset(dataset_name, split=split)
 
-    original_ds = evaluate_dataset_with_prompt(
+    tokenized, original, prompt = preprocess_dataset(
         task=experiment_name,
         dataset=dataset,
-        prompt=prompt,
         tokenizer=tokenizer,
-        model=model,
-        results_path=results_path,
-        batch_size=cfg['batch_size'],
-        num_beams=cfg['beams'],
-        force_generation=cfg['evaluation'].get("force_generation", False),
-        length_normalization=cfg['evaluation'].get('length_normalization', False),
+        prompt=prompt,
+        num_proc=cfg.get('num_proc', 1),
         use_only_correct_choice=cfg['evaluation'].get("use_only_correct_choice", False),
         lowercase_choices=cfg['evaluation'].get('lowercase_choices', False),
-        num_proc=cfg.get('num_proc', 1),
-        cuda_device=cfg['cuda_device']
+        preprocessor=preprocessor
     )
-    return original_ds, results_path
+
+    choices = prompt.answer_choices
+    logger.info(f"Choices found: {choices}")
+    max_choices_found = max(map(len, original['choices']))
+    min_choices_found = min(map(len, original['choices']))
+    logger.info(f"Max # Choices found: {max_choices_found}")
+    logger.info(f"Min # Choices found: {min_choices_found}")
+    if max_choices_found != min_choices_found:
+        logger.error("Variable number of choices found across examples. This is not supported.")
+        raise ValueError("Variable number of choices found across examples. This is not supported.")
+
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=4,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
+    )
+
+    data_loader = torch.utils.data.DataLoader(
+        tokenized,
+        batch_size=cfg['batch_size'],
+        collate_fn=collator,
+        shuffle=False
+    )
+
+    logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
+    logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
+    logger.info(f"Max Decoder Input length is {max(map(len, tokenized['choices_tokenized']))}.")
+
+    logger.info(f"Length Normalization = {cfg['evaluation'].get('length_normalization', False)}")
+    logger.info(f"Force Generation = {cfg['evaluation'].get('force_generation', False)}")
+    logger.info(f"Lowercase Choices = {cfg['evaluation'].get('lowercase_choices', False)}")
+    device = torch.device(cfg['cuda_device'])
+
+    # TODO(gabeorlanski): Move generation into its own thing
+    if choices is None or cfg['evaluation'].get("force_generation", False):
+        result_file = generate_prediction_sequences(
+            out_path=results_path,
+            data_loader=data_loader,
+            model=model,
+            device=device,
+            tokenizer=tokenizer,
+            max_gen_len=max(tokenized['labels_len']) + 32,
+            generator_kwargs={
+                "num_beams"           : cfg['beams'],
+                "num_return_sequences": cfg['beams']
+            }
+        )
+    else:
+        result_file = generate_predictions_choices(
+            out_path=results_path,
+            data_loader=data_loader,
+            model=model,
+            device=device,
+            tokenizer=tokenizer,
+            source_dataset=original,
+            length_normalize=cfg['evaluation'].get('length_normalization', False)
+        )
+    logger.info("Finished generating the dataset with the prompt.")
+    logger.info(f"Beginning evaluation of the predictions.")
+    evaluate(
+        experiment_name,
+        result_file,
+        metrics=prompt.metadata.metrics or ["Accuracy"],
+        out_path=results_path,
+        fixed_choices=choices.split(" ||| ") if "{" not in choices else None  # If jinja, not fixed choices.
+    )
+
+    return original, results_path
 
 
 def run_experiments(
@@ -119,7 +186,8 @@ def run_experiments(
         task_name,
         verbose_name,
         categories,
-        seeds
+        seeds,
+        preprocessor: Optional[TaskPreprocessor] = None
 ):
     if cfg['evaluation'].get('base_model', False):
         logger.info("Using base model.")
@@ -181,7 +249,8 @@ def run_experiments(
             experiment_name=experiment_name,
             prompt_file_name=prompt_fn,
             seeds=seeds,
-            subset=task_name if dataset_name != task_name else None
+            subset=task_name if dataset_name != task_name else None,
+            preprocessor=preprocessor
         )
 
         with results_path.joinpath('cfg.yaml').open('w') as cfg_file:

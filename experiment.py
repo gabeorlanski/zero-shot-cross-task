@@ -1,12 +1,13 @@
 import logging
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from unidecode import unidecode
 from pathlib import Path
 
 from src.experiment import run_experiments
-from src.prompt_map import load_prompts, load_answer_choice_experiment_prompts
-from src.preprocessors import TaskPreprocessor, DefaultPreprocessor
+from src.prompt_map import load_prompts, load_answer_choice_experiment_prompts, \
+    load_generalized_prompts
+from src.preprocessors import TaskPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def run(cfg: DictConfig):
     if cfg['cuda_device'] < 0:
         cfg['cuda_device'] = 'cpu'
     prompt_experiment_mode = cfg['prompt_experiment_mode']
-    preprocessor = DefaultPreprocessor()
+    preprocessor = None  # type: ignore
 
     if prompt_experiment_mode == "answer_choices":
         prompts_to_use = load_answer_choice_experiment_prompts(
@@ -72,7 +73,21 @@ def run(cfg: DictConfig):
             answer_filter=cfg['general_prompts']['answer_filter']
         )
     elif prompt_experiment_mode == "cross_task":
-        raise NotImplementedError()
+        if cfg['prompt_path'] is None:
+            raise ValueError("Need a path to prompts for cross task")
+        preprocessor_args = OmegaConf.to_object(task_cfg['preprocessor'])
+        preprocessor_cls = TaskPreprocessor.by_name(preprocessor_args.pop('name'))
+        preprocessor: TaskPreprocessor = preprocessor_cls(**preprocessor_args)
+
+        prompts_to_use = load_generalized_prompts(
+            PROJECT_ROOT.joinpath(cfg['prompt_path']),
+            task_name=task_name,
+            choices=preprocessor.choices,
+            choice_str=preprocessor.choice_string,
+            mcq_choice_str=preprocessor.mcq_choice_string,
+            prompt_filter_kwargs=cfg['prompt_filter'],
+        )
+
     else:
         prompts_to_use = load_prompts(
             prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']

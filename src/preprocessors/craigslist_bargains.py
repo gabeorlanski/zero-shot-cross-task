@@ -9,10 +9,10 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
     def __init__(self, add_speaker_prefix: bool = False, fair_trade_tol=1e-3):
         super().__init__(
-            choices=["seller", "buyer", "neither", "no deal", "unknown"],
-            choice_str='"seller", "buyer", "neither","no deal", or "unknown"',
+            choices=["seller", "buyer", "neither", "reject", "unknown"],
+            choice_str='"seller", "buyer", "neither", "reject", or "unknown"',
             mcq_choice_str='a) the seller\nb) the buyer\nc) neither - it is a'
-                           ' fair compromise\nd) no deal\ne) unknown'
+                           ' fair compromise\nd) reject\ne) unknown'
         )
         self.add_speaker_prefix = add_speaker_prefix
         self.fair_trade_tol = fair_trade_tol
@@ -20,7 +20,7 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
             "SELLER" : 0,
             "BUYER"  : 1,
             "NEITHER": 2,
-            "NO-DEAL": 3,
+            "REJECT": 3,
             "UNKNOWN": 4
         }
 
@@ -28,7 +28,8 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
         output_dict = {
             "choices": self.choices,
-            "idx"    : idx
+            "idx"    : idx,
+            "domain" : "Negotiations"
         }
 
         # Get the utterances
@@ -46,7 +47,8 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
         output_dict['input_sequence'] = "\n\n".join(input_sequence)
         label = self._get_label(
-            data_instance['dialogue_acts'],
+            data_instance['dialogue_acts']['intent'],
+            data_instance['dialogue_acts']['price'],
             data_instance['agent_info']['Target']
         )
         output_dict['label'] = self.label_to_int[label]
@@ -54,23 +56,26 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
         return output_dict
 
-    def _get_label(self, dialogue_acts, targets):
-        intents, prices = dialogue_acts
+    def _get_label(self, intents,prices, targets):
         if not intents:
-            return "UNKOWN"
-
-        if intents[-1] != 'accept':
-            return "NO-DEAL"
+            return "UNKNOWN"
 
         final_price = -1
-        for p in prices[::-1]:
+        found_intent = False
+        for i, p in zip(intents[::-1], prices[::-1]):
+
+            if i:
+                found_intent = True
             if p > -1:
                 final_price = p
                 break
 
         # Use less than 0 as it is impossible to have less than zero price.
-        if final_price < 0:
+        if final_price < 0 or not found_intent:
             return "UNKNOWN"
+
+        if intents[-1] != 'accept':
+            return "REJECT"
         # Get both parties target price.
         buyer_target, seller_target = targets
 

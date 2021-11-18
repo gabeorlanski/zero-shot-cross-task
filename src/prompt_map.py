@@ -272,14 +272,16 @@ def load_generalized_prompts(
     prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
     out = []
     for prompt in filter_prompts(prompt_templates, **prompt_filter_kwargs):
-        prompt.answer_choices = choices
+        if choices:
+            prompt.answer_choices = " ||| ".join(choices)
 
         if not hasattr(prompt.metadata, 'is_mcq'):
             raise AttributeError(f"Missing is_mcq from prompt {prompt.id}'s metadata")
 
-        prompt.choice_string = choice_str
-        if prompt.metadata.is_mcq:
-            prompt.choice_string = mcq_choice_str
+        if choice_str or mcq_choice_str:
+            prompt.choice_string = choice_str
+            if prompt.metadata.is_mcq:
+                prompt.choice_string = mcq_choice_str
 
         out.append((
             prompt_file_dict['group_name'],

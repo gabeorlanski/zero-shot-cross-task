@@ -1,1 +1,2 @@
 from src.preprocessors.task_preprocessor import TaskPreprocessor
+from src.preprocessors.craigslist_bargains import CraigslistBargainsPreprocessor

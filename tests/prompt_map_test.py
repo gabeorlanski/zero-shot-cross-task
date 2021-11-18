@@ -1,6 +1,6 @@
 import pytest
 from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
-from datasets import load_dataset
+from datasets import set_caching_enabled
 from pathlib import Path
 from omegaconf import OmegaConf
 from src.common.util import PROJECT_ROOT
@@ -175,7 +175,7 @@ def test_load_general_prompts(task_name):
     )['templates']
 
     for k in expected_prompts:
-        expected_prompts[k].answer_choices = ["Yes", "No", "Maybe"]
+        expected_prompts[k].answer_choices = " ||| ".join(["Yes", "No", "Maybe"])
         expected_prompts[k].choice_string = "Yes,no,maybe"
         if expected_prompts[k].metadata.is_mcq:
             expected_prompts[k].choice_string = "A)YesB)NoC)Maybe"

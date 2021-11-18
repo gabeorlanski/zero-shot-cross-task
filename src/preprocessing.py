@@ -1,6 +1,8 @@
 import logging
+from typing import Tuple, Optional
 
 from src.prompt_map import PromptMapper
+from src.preprocessors import TaskPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +15,18 @@ def preprocess_dataset(
         num_proc=4,
         batch_size=1,
         use_only_correct_choice: bool = False,
-        lowercase_choices: bool = False
+        lowercase_choices: bool = False,
+        preprocessor: Optional[TaskPreprocessor] = None
 ):
+    if preprocessor:
+        preprocessed_dataset = dataset.map(
+            preprocessor,
+            with_indices=True,
+            remove_columns=dataset.column_names
+        )
+    else:
+        preprocessed_dataset = dataset
+
     prompt_mapper = PromptMapper(
         prompt,
         tokenizer,
@@ -22,7 +34,7 @@ def preprocess_dataset(
         batch_size=batch_size,
         lowercase_choices=lowercase_choices
     )
-    result = prompt_mapper(task, dataset)
+    result = prompt_mapper(task, preprocessed_dataset)
 
     def tokenize_dataset(prompt_str, output_str, choices, idx):
         labels_tokenized = tokenizer(output_str, max_length=256, truncation=True)

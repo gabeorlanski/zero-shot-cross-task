@@ -1,11 +1,7 @@
 import pytest
 from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
-from datasets import load_dataset
-from pathlib import Path
-from unittest.mock import MagicMock
-import torch
+from datasets import load_dataset, set_caching_enabled
 from promptsource.templates import DatasetTemplates
-import json
 
 from src import preprocessing
 
@@ -13,6 +9,7 @@ from src import preprocessing
 @pytest.mark.parametrize('only_correct', [True, False], ids=["OnlyCorrect", "Normal"])
 @pytest.mark.parametrize('lowercase_choices', [True, False], ids=["LowerCase", "NormalCase"])
 def test_preprocess_dataset(only_correct, lowercase_choices):
+    set_caching_enabled(False)
     ds = load_dataset("anli", split="train_r1[:16]")
     tokenizer = AutoTokenizer.from_pretrained('t5-small')
     prompt_task = 'anli'
@@ -91,11 +88,13 @@ def test_preprocess_dataset(only_correct, lowercase_choices):
         tok,
         remove_columns=expected_normal_ds.column_names,
         with_indices=True
-    ).sort('input_len', reverse=True)
+    ).sort('idx')
+    result = result.sort("idx")
 
-    for i, expected in enumerate(expected_toked_ds):
-        assert result[i]['labels_len'] == expected['labels_len']
-        assert result[i]['labels'] == expected['labels']
-        assert result[i]['input_ids'] == expected['input_ids']
-        assert result[i]['attention_mask'] == expected['attention_mask']
-        assert result[i]['choices_tokenized'] == expected['choices_tokenized']
+    for i, (actual, expected) in enumerate(zip(result, expected_toked_ds)):
+        assert actual['labels_len'] == expected['labels_len']
+        assert actual['labels'] == expected['labels']
+        assert actual['input_ids'] == expected['input_ids']
+        assert actual['attention_mask'] == expected['attention_mask']
+        assert actual['choices_tokenized'] == expected['choices_tokenized']
+    set_caching_enabled(True)

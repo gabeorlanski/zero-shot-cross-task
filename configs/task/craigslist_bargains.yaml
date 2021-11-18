@@ -2,6 +2,8 @@ defaults:
   - _self_
 
 name: craigslist_bargains
+category:
+  - Dialogue
 
 preprocessor:
   name: "craigslist"

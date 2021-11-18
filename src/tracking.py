@@ -50,7 +50,9 @@ def get_prompt_info_for_wandb(
     original_choices = prompt_metadata.get("original_choices", prompt.answer_choices)
     prompt_cfg['uses_original_choices'] = prompt.answer_choices == original_choices
     prompt_cfg['original_choices'] = original_choices
-    prompt_cfg['original_task'] = list(prompt_metadata['original_task'])
+    prompt_cfg['original_task'] = False if isinstance(prompt_metadata['original_task'], List) else \
+        prompt_metadata['original_task']
+    prompt_cfg['prompt_task'] = prompt_metadata.get('prompt_task', prompt_metadata['original_task'])
 
     tags = [
         f"PromptCat:{prompt_cfg['prompt_category']}",
