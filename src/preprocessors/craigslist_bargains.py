@@ -7,11 +7,13 @@ from src.preprocessors.task_preprocessor import TaskPreprocessor
 @TaskPreprocessor.register('craigslist')
 class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
-    def __init__(self, add_speaker_prefix: bool = False, fair_trade_tol=1e-3):
+    def __init__(self, add_speaker_prefix: bool = False, fair_trade_tol=1e-3, choices=None):
+        choices = choices or ["seller", "buyer", "neither", "reject", "unknown"]
+        assert len(choices) == 5
         super().__init__(
-            choices=["seller", "buyer", "neither", "reject", "unknown"],
-            choice_str='"seller", "buyer", "neither", "reject", or "unknown"',
-            mcq_choice_str='a) the seller\nb) the buyer\nc) neither - it is a'
+            choices=choices,
+            choice_str='"the seller", "the buyer", "neither", "reject", or "unknown"',
+            mcq_choice_str=f'a) the seller\nb) the buyer\nc) neither - it is a'
                            ' fair compromise\nd) reject\ne) unknown'
         )
         self.add_speaker_prefix = add_speaker_prefix
@@ -20,7 +22,7 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
             "SELLER" : 0,
             "BUYER"  : 1,
             "NEITHER": 2,
-            "REJECT": 3,
+            "REJECT" : 3,
             "UNKNOWN": 4
         }
 
@@ -56,7 +58,7 @@ class CraigslistBargainsPreprocessor(TaskPreprocessor):
 
         return output_dict
 
-    def _get_label(self, intents,prices, targets):
+    def _get_label(self, intents, prices, targets):
         if not intents:
             return "UNKNOWN"
 

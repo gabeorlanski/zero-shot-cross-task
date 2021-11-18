@@ -56,9 +56,9 @@ def test_get_metrics_for_wandb(tmpdir):
     metrics, result = tracking.get_metrics_for_wandb(met_path, pred_path)
 
     assert set(metrics) == {
-        "c0_logit_mean", "c1_logit_mean", "c2_logit_mean",
-        "c0_logit_std", "c1_logit_std", "c2_logit_std",
-        "c0_logit_median", "c1_logit_median", "c2_logit_median",
+        "logits/c0_logit_mean", "logits/c1_logit_mean", "logits/c2_logit_mean",
+        "logits/c0_logit_std", "logits/c1_logit_std", "logits/c2_logit_std",
+        "logits/c0_logit_median", "logits/c1_logit_median", "logits/c2_logit_median",
         "accuracy"
     }
     assert metrics['accuracy'] == 100

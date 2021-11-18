@@ -287,7 +287,7 @@ def load_generalized_prompts(
             prompt_file_dict['group_name'],
             prompt,
             {
-                "name"         : f"{sanitize_name(prompt.name)}.{prompt_file_dict['short_name']}",
+                "name"         : f"{sanitize_name(prompt.name)}",
                 "category"     : "General",
                 "original_task": prompt.metadata.original_task == task_name,
                 "prompt_task"  : prompt.metadata.original_task,

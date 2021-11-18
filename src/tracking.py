@@ -141,7 +141,7 @@ def get_metrics_for_wandb(metrics_path, predictions_path):
         logit_metrics = logits.agg(['mean', 'median', 'std'])
         for col, values in logit_metrics.to_dict().items():
             for metric, value in values.items():
-                metrics[f"{col}_{metric}"] = value
+                metrics[f"logits/{col}_{metric}"] = value
 
     return metrics, out_df
 
