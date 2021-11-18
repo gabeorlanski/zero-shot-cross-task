@@ -5,7 +5,8 @@ from unidecode import unidecode
 from pathlib import Path
 
 from src.experiment import run_experiments
-from src.prompt_map import load_prompts, load_general_prompts
+from src.prompt_map import load_prompts, load_answer_choice_experiment_prompts
+from src.preprocessors import TaskPreprocessor, DefaultPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -59,19 +60,24 @@ def run(cfg: DictConfig):
 
     if cfg['cuda_device'] < 0:
         cfg['cuda_device'] = 'cpu'
+    prompt_experiment_mode = cfg['prompt_experiment_mode']
+    preprocessor = DefaultPreprocessor()
 
-    if not cfg.get('use_general_prompts'):
-        prompts_to_use = load_prompts(
-            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']
-        )
-    else:
-        prompts_to_use = load_general_prompts(
+    if prompt_experiment_mode == "answer_choices":
+        prompts_to_use = load_answer_choice_experiment_prompts(
             prompt_dir=PROJECT_ROOT.joinpath(cfg["general_prompts"]['dir']),
             prompt_cfg=task_cfg['general_prompts'],
             category_filter=cfg['general_prompts']['category_filter'],
             prompt_filter_kwargs=cfg['prompt_filter'],
             answer_filter=cfg['general_prompts']['answer_filter']
         )
+    elif prompt_experiment_mode == "cross_task":
+        raise NotImplementedError()
+    else:
+        prompts_to_use = load_prompts(
+            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']
+        )
+
     if cfg["debug"]:
         logger.warning(f"Debugging enbaled, only using a single prompt")
         prompts_to_use = prompts_to_use[:1]
@@ -82,6 +88,7 @@ def run(cfg: DictConfig):
         cfg=cfg,
         prompts_to_use=prompts_to_use,
         dataset_name=dataset_name,
+        preprocessor=preprocessor,
         split_name=split,
         task_name=task_name,
         verbose_name=verbose_name,

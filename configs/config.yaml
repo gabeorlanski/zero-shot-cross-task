@@ -12,8 +12,9 @@ run_name: ???
 cuda_device: 0
 
 debug: False
-use_general_prompts: False
 disable_tracking: False
+
+prompt_experiment_mode: default
 
 evaluation:
   force_generation: False

@@ -1,0 +1,82 @@
+group_name: GeneralFixedChoice
+short_name: GenFC
+templates:
+  145dd841-b971-4550-bc88-305ad3278d58: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: null
+    id: 145dd841-b971-4550-bc88-305ad3278d58
+    jinja: 'The following conversation is a negotiation on craigslist. The first speaker
+        is the buyer, and the second speaker is the seller.
+        {{ input_sequence }}
+        From the seller''s point of view, this deal could be considered
+        ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Span Squad
+        - Accuracy
+      original_task: craigslist_bargains
+      is_mcq: False
+    name: good deal for seller no list price implicit
+    reference: implicit version of "good deal for seller no list price"
+  27010b55-dd5b-4ee9-9e14-a4b809aa6cdb: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '"yes", "no", "neither",  or "unknown"'
+    id: 27010b55-dd5b-4ee9-9e14-a4b809aa6cdb
+    jinja: 'The following conversation is a negotiation on craigslist. The first speaker
+       is the buyer, and the second speaker is the seller.
+       {{ input_sequence }}
+       Was this a good deal for the seller? answer {{ choice_string }}.
+       ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Span Squad
+        - Accuracy
+      original_task: craigslist_bargains
+      is_mcq: False
+    name: good deal for seller no list price
+    reference: same as "good deal for seller" prompt, but excludes the list price
+  78d1b487-c535-4a0d-ae49-055d321db3fd: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: '"yes", "no", "neither",  or "unknown"'
+    id: 78d1b487-c535-4a0d-ae49-055d321db3fd
+    jinja: 'The following conversation is a negotiation on craigslist. The first speaker
+       is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else N/A}}.
+       {{ input_sequence }}
+       Was this a good deal for the seller? Answer {{ choice_string }}.
+       ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Span Squad
+        - Accuracy
+      original_task: craigslist_bargains
+      is_mcq: False
+    name: good deal for seller
+    reference: asks the model whether the deal was good for the seller or not (it's
+      good if the seller's target is closer to the final price than the buyer's, or
+      there is a tie)
+  a1dbb258-2e5c-4160-986b-46fc03546965: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'a) the buyer
+      b) the seller
+      c) neither - it is a fair compromise
+      d) unknown'
+    id: a1dbb258-2e5c-4160-986b-46fc03546965
+    jinja: 'The following conversation is a negotiation on craigslist. The first speaker
+        is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0}}.
+        {{ input_sequence }}
+        Question: Which party got the better deal? Choose from:
+        {{choice_string}}
+        Answer:
+        ||| {{answer_choices["label"]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Span Squad
+        - Accuracy
+      original_task: craigslist_bargains
+      is_mcq: True
+    name: best deal
+    reference: explicitly asks model which party got the best deal

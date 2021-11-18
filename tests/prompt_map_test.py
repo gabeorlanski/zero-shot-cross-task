@@ -86,9 +86,9 @@ def test_filter_prompts(name, choice, choices_in_prompt, original_task):
     assert result_names == expected
 
 
-def test_load_general_prompts(tmpdir):
+def load_answer_choice_experiment_prompts(tmpdir):
     tmpdir_path = Path(tmpdir)
-    sample_prompts = PROJECT_ROOT.joinpath("test_fixtures", "general_prompt_sample.yaml")
+    sample_prompts = PROJECT_ROOT.joinpath("test_fixtures", "3fc_prompt_sample.yaml")
     shutil.copyfile(sample_prompts, tmpdir_path.joinpath('prompts.yaml'))
     prompt_templates = yaml.load(sample_prompts.open('r'), yaml.Loader)['templates']
     prompt_cfg = OmegaConf.create({
@@ -127,7 +127,7 @@ def test_load_general_prompts(tmpdir):
         }
     })
 
-    raw_result = prompt_map.load_general_prompts(
+    raw_result = prompt_map.load_answer_choice_experiment_prompts(
         tmpdir_path,
         prompt_cfg
     )
@@ -156,3 +156,40 @@ def test_load_general_prompts(tmpdir):
                 **v
             }
             assert p.answer_choices == answer_choices
+
+
+@pytest.mark.parametrize('task_name', ['craigslist_bargains', 'test'])
+def test_load_general_prompts(task_name):
+    sample_prompts = PROJECT_ROOT.joinpath("test_fixtures", "general_fixed_choice.yaml")
+    prompts = prompt_map.load_generalized_prompts(
+        prompt_path=sample_prompts,
+        task_name=task_name,
+        choices=["Yes", "No", "Maybe"],
+        choice_str="Yes,no,maybe",
+        mcq_choice_str="A)YesB)NoC)Maybe"
+    )
+
+    expected_prompts = yaml.load(
+        sample_prompts.open('r'),
+        yaml.Loader
+    )['templates']
+
+    for k in expected_prompts:
+        expected_prompts[k].answer_choices = ["Yes", "No", "Maybe"]
+        expected_prompts[k].choice_string = "Yes,no,maybe"
+        if expected_prompts[k].metadata.is_mcq:
+            expected_prompts[k].choice_string = "A)YesB)NoC)Maybe"
+
+    assert len(prompts) == 4
+
+    for g, prompt, prompt_dict in prompts:
+        assert g == "GeneralFixedChoice"
+        expected_prompt = expected_prompts[prompt.id]
+        assert prompt.answer_choices == expected_prompt.answer_choices
+        assert prompt.jinja == expected_prompt.jinja
+        assert prompt.name == expected_prompt.name
+        assert prompt.choice_string == expected_prompt.choice_string
+        assert prompt_dict['name'] == f"{sanitize_name(prompt.name)}.GenFC"
+        assert prompt_dict['category'] == "General"
+        assert prompt_dict['original_task'] == (task_name == 'craigslist_bargains')
+        assert prompt_dict['prompt_task'] == 'craigslist_bargains'

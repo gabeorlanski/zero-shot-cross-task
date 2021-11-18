@@ -3,5 +3,9 @@ defaults:
 
 name: craigslist_bargains
 
+preprocessor:
+  name: "craigslist"
+
+
 splits:
   - validation

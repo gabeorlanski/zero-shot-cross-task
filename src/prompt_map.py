@@ -188,7 +188,7 @@ def filter_prompts(
     return out
 
 
-def load_general_prompts(
+def load_answer_choice_experiment_prompts(
         prompt_dir: Path,
         prompt_cfg: DictConfig,
         category_filter: Optional[List] = None,
@@ -247,6 +247,51 @@ def load_general_prompts(
                     **current_prompt_metadata
                 }
             ))
+
+    if not out:
+        raise ValueError("No output prompts")
+
+    return out
+
+
+def load_generalized_prompts(
+        prompt_path: Path,
+        task_name: str,
+        choices: List = None,
+        choice_str: str = None,
+        mcq_choice_str: str = None,
+        prompt_filter_kwargs: Dict = None
+):
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Could not find general prompt file {prompt_path}")
+
+    prompt_file_dict = yaml.load(prompt_path.open('r'), yaml.Loader)
+    prompt_templates = prompt_file_dict['templates']
+    logger.info(f"Found {len(prompt_templates)} prompts at {prompt_path}")
+
+    prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
+    out = []
+    for prompt in filter_prompts(prompt_templates, **prompt_filter_kwargs):
+        prompt.answer_choices = choices
+
+        if not hasattr(prompt.metadata, 'is_mcq'):
+            raise AttributeError(f"Missing is_mcq from prompt {prompt.id}'s metadata")
+
+        prompt.choice_string = choice_str
+        if prompt.metadata.is_mcq:
+            prompt.choice_string = mcq_choice_str
+
+        out.append((
+            prompt_file_dict['group_name'],
+            prompt,
+            {
+                "name"         : f"{sanitize_name(prompt.name)}.{prompt_file_dict['short_name']}",
+                "category"     : "General",
+                "original_task": prompt.metadata.original_task == task_name,
+                "prompt_task"  : prompt.metadata.original_task,
+                "is_mcq"       : prompt.metadata.is_mcq
+            }
+        ))
 
     if not out:
         raise ValueError("No output prompts")
