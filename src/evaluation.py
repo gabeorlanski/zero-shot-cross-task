@@ -340,11 +340,18 @@ def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
             met_name = f"f1_choice_{l}"
             logger.info(f"{met_name:>20} {f1:.3f}")
             final_metrics[met_name] = f1
-        final_metrics.update(mt.mean_multiclass_f1(len(fixed_choices))(
+        final_metrics.update(mt.sklearn_metrics_wrapper(
+            "fbeta_score",
+            metric_dict_str="mean_multiclass_f1",
+            metric_post_process_fn=lambda x: 100 * x,
+            beta=1,
+            labels=range(len(fixed_choices)),
+            average="macro"
+        )(
             np.array(targets_ints), np.array(preds_ints)
         ))
         logger.info(f"{'mean_multiclass_f1':>20} "
-                    f"{final_metrics['mean_multclass_f1']:.3f}")
+                    f"{final_metrics['mean_multiclass_f1']:.3f}")
 
     final_metrics['input_len/mean'] = np.mean(input_lens)
     final_metrics['input_len/median'] = np.median(input_lens)
