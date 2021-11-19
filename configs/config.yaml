@@ -10,6 +10,7 @@ num_proc: 4
 split: ???
 run_name: ???
 cuda_device: 0
+disable_caching: False
 
 debug: False
 disable_tracking: False
@@ -17,6 +18,9 @@ disable_tracking: False
 prompt_experiment_mode: default
 prompt_path: null
 
+group:
+  override_name: null
+  suffix: null
 
 evaluation:
   force_generation: False

@@ -2,7 +2,7 @@ import logging
 from typing import Tuple, Optional
 
 from src.prompt_map import PromptMapper
-from src.preprocessors import TaskPreprocessor
+from src.preprocessors import FixedChoiceTaskPreprocessor, TaskMode
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,19 @@ def preprocess_dataset(
         batch_size=1,
         use_only_correct_choice: bool = False,
         lowercase_choices: bool = False,
-        preprocessor: Optional[TaskPreprocessor] = None
+        preprocessor: Optional[FixedChoiceTaskPreprocessor] = None
 ):
     if preprocessor:
+        if not hasattr(prompt.metadata, 'task_mode'):
+            raise AttributeError(f"Trying to use a preprocessor but prompt "
+                                 f"'{prompt.name}' does not have a task mode")
+
+        if not hasattr(prompt.metadata, 'is_mcq'):
+            raise AttributeError(f"Trying to use a preprocessor but prompt "
+                                 f"'{prompt.name}' does not have an 'is_mcq'.")
+
+        preprocessor.is_mcq = prompt.metadata.is_mcq
+        preprocessor.set_mode(TaskMode[prompt.metadata.task_mode])
         preprocessed_dataset = dataset.map(
             preprocessor,
             with_indices=True,

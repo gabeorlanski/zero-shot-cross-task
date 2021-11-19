@@ -15,7 +15,7 @@ from src.evaluation import evaluate, generate_prediction_sequences, generate_pre
 from src.tracking import create_run_cfg, save_run_to_wandb
 from src.common import sanitize_name
 from src.prompt_map import DEFAULT_PROMPT_GROUP
-from src.preprocessors import TaskPreprocessor
+from src.preprocessors import FixedChoiceTaskPreprocessor
 from src.preprocessing import preprocess_dataset
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ def single_experiment(
         seeds,
         subset=None,
         working_dir=None,
-        preprocessor: Optional[TaskPreprocessor] = None
+        preprocessor: Optional[FixedChoiceTaskPreprocessor] = None
 ):
     results_path = prepare_environment(
         prompt_name=prompt_file_name,
@@ -172,7 +172,8 @@ def single_experiment(
         result_file,
         metrics=prompt.metadata.metrics or ["Accuracy"],
         out_path=results_path,
-        fixed_choices=choices.split(" ||| ") if "{" not in choices else None  # If jinja, not fixed choices.
+        fixed_choices=choices.split(" ||| ") if "{" not in choices else None
+        # If jinja, not fixed choices.
     )
 
     return original, results_path
@@ -187,7 +188,7 @@ def run_experiments(
         verbose_name,
         categories,
         seeds,
-        preprocessor: Optional[TaskPreprocessor] = None
+        preprocessor: Optional[FixedChoiceTaskPreprocessor] = None
 ):
     if cfg['evaluation'].get('base_model', False):
         logger.info("Using base model.")
@@ -220,6 +221,8 @@ def run_experiments(
         # So to remove them we need to first unidecode it, then clean it,
         # then remove duplicate characters
         prompt_fn = prompt_dict['name']
+        if prompt_dict.get('prompt_task', None) is not None:
+            prompt_fn = f"{prompt_dict.get('prompt_task', None)}.{prompt_fn}"
 
         if prompt_group != DEFAULT_PROMPT_GROUP:
             prompt_fn = f"{prompt_group}.{prompt_fn}"
@@ -269,6 +272,12 @@ def run_experiments(
         # If tracking is enabled we save the results to wandb
         if not cfg.get('disable_tracking', False):
             wandb_group_name = f"{verbose_name}[{split_file_name}]"
+
+            if cfg['group'].get('override_name', None) is not None:
+                wandb_group_name = cfg['group']['override_name']
+            elif cfg['group'].get('suffix', None) is not None:
+                wandb_group_name += f".{cfg['group']['suffix']}"
+
             logger.info(f"Saving {prompt_fn} to wandb under group {wandb_group_name}")
             save_run_to_wandb(
                 run_name=prompt_fn,

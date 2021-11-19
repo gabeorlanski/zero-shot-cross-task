@@ -16,6 +16,7 @@ templates:
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
+      task_mode: CLASSIFICATION
     name: good deal for seller no list price implicit
     reference: implicit version of "good deal for seller no list price"
   27010b55-dd5b-4ee9-9e14-a4b809aa6cdb: !Template
@@ -33,6 +34,7 @@ templates:
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
+      task_mode: CLASSIFICATION
     name: good deal for seller no list price
     reference: same as "good deal for seller" prompt, but excludes the list price
   78d1b487-c535-4a0d-ae49-055d321db3fd: !Template
@@ -50,9 +52,10 @@ templates:
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: False
+      task_mode: CLASSIFICATION
     name: good deal for seller
     reference: asks the model whether the deal was good for the seller or not (it's
-      good if the seller's target is closer to the final price than the buyer's, or
+      good if the seller's answer_choices[label] is closer to the final price than the buyer's, or
       there is a tie)
   a1dbb258-2e5c-4160-986b-46fc03546965: !Template
     answer_choices: '{{ choices | join("|||") }}'
@@ -65,7 +68,7 @@ templates:
         is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and (additional_inputs|length) > 0 else "N/A"}}.
         {{ input_sequence }}
         Question: Which party got the better deal? Choose from:
-        {{choice_string}}
+        {{ choice_string }}
         Answer:
         ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -74,22 +77,24 @@ templates:
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: True
+      task_mode: CLASSIFICATION
     name: best deal
     reference: explicitly asks model which party got the best deal
   2283cebf-988e-4bff-96bf-982a09963e49: !Template
     answer_choices: '{{ choices | join("|||") }}'
     choice_string: "N/A"
     id: 2283cebf-988e-4bff-96bf-982a09963e49
-    jinja: 'Decide whether the question "{{ choice_string }}" is answerable solely based
+    jinja: 'Decide whether the question "{{ question }}" is answerable solely based
         on this passage:
-        {{ input_sequence }}
+        {{ context }}
         Answer: ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
-      choices_in_prompt: true
+      choices_in_prompt: false
       metrics:
         - Accuracy
       original_task: zest
       is_mcq: false
+      task_mode: QA
     name: answerable_or_not
     reference: 'Decide whether this question is answerable. Metric: F1 Score with
         modified precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
@@ -97,9 +102,9 @@ templates:
     answer_choices: '{{ choices | join("|||") }}'
     choice_string: 'N/A'
     id: 6f694e45-1d17-4067-a1f6-7dae89c148db
-    jinja: 'My daughter is asking me a question about {{domain if domain is defined else "questions"}}:
-        "{{ choice_string }}"
-        Here''s what I found on the internet: {{ input_sequence }}
+    jinja: 'My daughter is asking me a question about {{ domain }}:
+        "{{ question }}"
+        Here''s what I found on the internet: {{ context }}
         What''s the answer?
         Answer: |||{{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -108,6 +113,7 @@ templates:
         - Accuracy
       original_task: zest
       is_mcq: false
+      task_mode: QA
     name: ask_question_as_kid
     reference: 'Answer the questions of a curious kid. Metric: F1 Score with modified
         precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
@@ -117,14 +123,15 @@ templates:
     id: 7425232a-9880-428c-9ddc-4070e50e22cc
     jinja: 'Answer the question based on the context. If the question is not answerable
         with the context alone, say "Can''t answer".
-        {{ choice_string }}
-        {{input_sequence}}||| {{answer_choices[label]}}'
+        {{ context }}
+        {{ question }} ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
         - Accuracy
       original_task: zest
       is_mcq: false
+      task_mode: QA
     name: gpt3_instruct_format
     reference: 'Template format from GPT3 instruct. Metric: F1 Score with modified
         precision and recall, please refer to the paper https://arxiv.org/abs/2011.08115'
@@ -132,14 +139,15 @@ templates:
     answer_choices: '{{ choices | join("|||") }}'
     choice_string: 'N/A'
     id: cd563834-49ee-495d-ac46-99f0264e58d5
-    jinja: 'I am giving my students the following question about {{domain if domain is defined else "questions"}}: "{{ input_sequence }}".
-        What should be their answer based on this context: {{ choice_string }}|||{{answer_choices[label]}}'
+    jinja: 'I am giving my students the following question about {{ domain }}: "{{ question }}".
+        What should be their answer based on this context: {{ context }} ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
         - Accuracy
       original_task: zest
       is_mcq: false
+      task_mode: QA
     name: ask_question_as_teacher
     reference: 'I don''t know answer. Metric: F1 Score with modified precision and
         recall, please refer to the paper https://arxiv.org/abs/2011.08115'
@@ -149,7 +157,7 @@ templates:
     id: 091ba88e-d208-4a3a-ada7-d9698aeb5568
     jinja: 'You will receive full credit if you solve the following word problem:
         {{ input_sequence }}
-        {{ choice_string }}|||
+        {{ choice_string }} |||
         {{answer_choices[label]}}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
@@ -157,6 +165,7 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
+      task_mode: CLASSIFICATION
     name: choose_correct_variant
     reference: 'Variant of choose_correct. '
   6312d599-8ca4-4bc8-a76f-81f2e36727bd: !Template
@@ -175,6 +184,7 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
+      task_mode: CLASSIFICATION
     name: choose_correct_og
     reference: The template asks the model to choose the correct answer.
   8c4c81cc-ca54-45fc-a69a-4b97a5f2b465: !Template
@@ -189,6 +199,7 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
+      task_mode: CLASSIFICATION
     name: pick_the_correct
     reference: The template picks the correct the answer choice
   06719321-62e7-4f6e-8f95-464cd2b5ca5c: !Template
@@ -206,6 +217,7 @@ templates:
         - Accuracy
       original_task: financial_phrasebank
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: share_price_option
     reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
   0beba048-f949-4034-83b6-a3e0e7363f46: !Template
@@ -221,6 +233,7 @@ templates:
         - Accuracy
       original_task: financial_phrasebank
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: sentiment
     reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
   461efe04-6883-41e8-80f0-e722a75260fe: !Template
@@ -236,6 +249,7 @@ templates:
         - Accuracy
       original_task: financial_phrasebank
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: complementary_industries
     reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
   5fa16d31-b513-480d-bd1b-1fa8c182fb76: !Template
@@ -252,6 +266,7 @@ templates:
         - Accuracy
       original_task: financial_phrasebank
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: bullish_neutral_bearish
     reference: 'Metrics: Accuracy, Precision, Recall, F1 per class'
   13c02904-e4e2-4b4f-b115-44b437d22041: !Template
@@ -268,6 +283,7 @@ templates:
         - Accuracy
       original_task: xsum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: DOC_write_summary_of_above
     reference: ''
   3d388a1e-3361-407b-baa7-61397cc58382: !Template
@@ -282,6 +298,7 @@ templates:
         - Accuracy
       original_task: xsum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: DOC_how_would_you_rephrase_few_words
     reference: http://gptprompts.wikidot.com/prompt:summarization
   4cfe4126-b9f5-44eb-8a98-973987c5f32e: !Template
@@ -297,6 +314,7 @@ templates:
         - Accuracy
       original_task: xsum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: college_roommate_asked_DOC_so_I_recap
     reference: http://gptprompts.wikidot.com/prompt:summarization
   9a3f617f-628f-4fa5-9b74-47d0b166a487: !Template
@@ -312,6 +330,7 @@ templates:
         - Accuracy
       original_task: xsum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: read_below_DOC_write_abstract
     reference: ''
   1ee5ddef-fffb-4b73-a2f7-f600ffac63cb: !Template
@@ -326,6 +345,7 @@ templates:
         - Accuracy
       original_task: craffel/openai_lambada
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: ellipses
     reference: ''
   4f08e9d4-bcff-4bc0-9902-87c497625d17: !Template
@@ -340,6 +360,7 @@ templates:
         - Accuracy
       original_task: craffel/openai_lambada
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: GPT-3 style
     reference: Brown et al.
   774b4349-0524-4a34-881b-b344f8f5c34e: !Template
@@ -354,6 +375,7 @@ templates:
         - Accuracy
       original_task: craffel/openai_lambada
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: what comes next
     reference: ''
   2bca0197-e3d4-4870-bd95-178411e52e09: !Template
@@ -369,6 +391,7 @@ templates:
         - Accuracy
       original_task: multi_x_science_sum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: ref_relatedwork
     reference: ''
   3bd082cb-4e28-4eb7-9fa2-dd03f1f86219: !Template
@@ -385,6 +408,7 @@ templates:
         - Accuracy
       original_task: multi_x_science_sum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: abstract_relatedwork
     reference: ''
   af4d550e-54b8-471e-97af-2b2c50a1382e: !Template
@@ -400,6 +424,7 @@ templates:
         - Accuracy
       original_task: multi_x_science_sum
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: relatedwork_abstract
     reference: ''
   202246b0-3f82-42b9-bc8d-d36997b5f2cb: !Template
@@ -415,6 +440,7 @@ templates:
         - Accuracy
       original_task: sem_eval_2010_task_8
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: semantic relations with options
     reference: out of options; macro-averaged F1-score official metric
   5d7123a8-4ed4-42ce-bcfb-4af415962efc: !Template
@@ -430,6 +456,7 @@ templates:
         - Accuracy
       original_task: sem_eval_2010_task_8
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: semantically related nominials with options
     reference: 'please answer; official metric:  macro-averaged F1-score'
   c97e7bbf-b7f0-4cee-ada5-431ce7d606cc: !Template
@@ -446,33 +473,271 @@ templates:
         - Accuracy
       original_task: sem_eval_2010_task_8
       is_mcq: false
+      task_mode: CLASSIFICATION
     name: semantic relations nominials without options
     reference: mention e1,e2 after; macro-averaged F1-score official metric
-  bb089312-23cb-475d-93b5-952781bc6be4: !Template
+  1f959d92-dca8-4647-9840-69391dfbd000: !Template
     answer_choices: '{{ choices | join("|||") }}'
-    choice_string: '{{ choices | join(", ") }}'
-    id: bb089312-23cb-475d-93b5-952781bc6be4
-    jinja: 'Question: {{ input_sequence }}\nAnswer: {{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}\n\nKnowing that the question can be ambiguous, can you perform question disambiguation by generating a question such that \"{{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}\" is a more suitable answer? If you deem that the question is not ambiguous, generate the same question given above. |||
-        {{answer_choices[label]}}'
+    choice_string: 'N/A'
+    id: 1f959d92-dca8-4647-9840-69391dfbd000
+    jinja: "Fill in the blank in the following sentence using world knowledge:\n\n\
+       {{ input_sequence }}\n\nChose from the following\
+       \ options:\n\n{{ ', '.join(answer_choices) }} ||| {{ answer_choices[label] }}"
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: ambig_qa
+      original_task: numer_sense
       is_mcq: false
-    name: perform_question_disambiguation
+      task_mode: CLASSIFICATION
+    name: fill_in_the_blank_with_choices_after
     reference: ''
-  09880e1a-0fcc-49dc-8462-b6603e15d691: !Template
+  4e9da2b8-2502-44a7-a7da-ae62f2d554c9: !Template
     answer_choices: '{{ choices | join("|||") }}'
-    choice_string: '{{ choices | join(", ") }}'
-    id: 09880e1a-0fcc-49dc-8462-b6603e15d691
-    jinja: "What are the possible answers to the question \"{{input_sequence}}\"? Use semi-colons to separate your answers if you have multiple answers.\n\n|||
-        {{answer_choices[label]}}"
+    choice_string: 'N/A'
+    id: 4e9da2b8-2502-44a7-a7da-ae62f2d554c9
+    jinja: 'The following sentence needs to be filled with a word which is a number
+     word or "no". Using common sense and world knowledge fill in the blanks.
+     {{ input_sequence }}
+     Which is it?
+     |||
+     {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: numer_sense
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: fill_in_the_blank_with_instruction
+    reference: ''
+  5d8e8d21-8059-4373-bbf2-a25cbe1e6960: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 5d8e8d21-8059-4373-bbf2-a25cbe1e6960
+    jinja: 'Using common sense reasoning of the world and only the following options,
+     how would you fill in the blank?:
+     {{ '', ''.join(answer_choices) }}
+     {{ input_sequence }}
+     |||
+     {{answer_choices[label]}}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: ambig_qa
+      original_task: numer_sense
       is_mcq: false
-    name: answer_prediction_all_answers_interrogative
+      task_mode: CLASSIFICATION
+    name: fill_in_the_blank_with_choices_before
+    reference: with all the given options
+  cacee36c-e2b7-458e-9d51-6fcfd83842b4: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: cacee36c-e2b7-458e-9d51-6fcfd83842b4
+    jinja: 'Fill in the blanks:
+     {{ input_sequence }}
+     The correct answer is:
+     |||
+     {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: numer_sense
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: fill_in_the_blank_before_sentence
+    reference: replace mask with fill in the blank
+  fc76beb7-c258-412f-a623-42fc8d2331b6: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: fc76beb7-c258-412f-a623-42fc8d2331b6
+    jinja: "{{ input_sequence }}\n\nUsing only the following\
+     \ options, what answer would make the most sense in the blank above?\n\n{{ ',\
+     \ '.join(answer_choices) }}\n\n||| \n\n{{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: numer_sense
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: fill_in_the_blank_with_instruction_and_choices
+    reference: missing word simple
+  b7012213-04c4-424d-85fb-39d63d8a0ca2: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: b7012213-04c4-424d-85fb-39d63d8a0ca2
+    jinja: 'What are the topics in the sentence: {{input_sequence}}
+        |||
+        {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: common_gen
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: topics from the sentence
+    reference: The template generates a random topic from the sentence
+  ed215962-8e51-45e7-b025-6e822f877098: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: ed215962-8e51-45e7-b025-6e822f877098
+    jinja: "We have the sentence: {{input_sequence}}; \nExtract all the key concepts: \n|||\n\
+        {{ answer_choices[label] }}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: common_gen
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: sentence to concepts
+    reference: Template identifies the concepts from the sentence
+  c4ed37ae-d7d7-4197-a725-ef2152fa3b1f: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: c4ed37ae-d7d7-4197-a725-ef2152fa3b1f
+    jinja: 'Suppose {{premise}} Can we infer that "{{hypothesis}}"? {{ choice_string }}?
+        ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: can we infer
+    reference: Webson & Pavlick 2021
+  ec249357-e672-4e7d-b8b6-d97ed7d090c5: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: ec249357-e672-4e7d-b8b6-d97ed7d090c5
+    jinja: '{{premise}} Based on that information, is the claim: "{{hypothesis}}"
+        {{ choice_string }}? ||| {{ answer_choices[label]
+        }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: claim true/false/inconclusive
+    reference: v0.1
+  620aa3fc-d5eb-46f5-a1ee-4c754527aa97: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 620aa3fc-d5eb-46f5-a1ee-4c754527aa97
+    jinja: '{{premise}}
+      Question: {{hypothesis}} {{choice_string}}? ||| {{ answer_choices[label]
+      }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: GPT-3 style
+    reference: 'Same as reported in Figure G7 of the GPT-3 paper, except that there
+      is no task identifying tokens like "anli R1: ".'
+  9b613182-c6ab-4427-9221-3d68f6d62765: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 9b613182-c6ab-4427-9221-3d68f6d62765
+    jinja: '{{premise}} Based on the previous passage, is it true that "{{hypothesis}}"?
+      {{ choice_string }}? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: based on the previous passage
+    reference: "Adapted from the BoolQ prompts in Schick & Sch\xFCtze 2021."
+  a850110d-f1a3-49b4-949a-d3bfe9f81344: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: a850110d-f1a3-49b4-949a-d3bfe9f81344
+    jinja: '{{premise}} Are we justified in saying that "{{hypothesis}}"? {{ choice_string }}? ||| {{ answer_choices[label] }} '
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: justified in saying
+    reference: Webson & Pavlick 2021
+  bab86d5a-4f9c-40db-b619-a7b7d5cae681: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: bab86d5a-4f9c-40db-b619-a7b7d5cae681
+    jinja: 'Take the following as truth: {{premise}}
+      Then the following statement: "{{hypothesis}}" is {{ choice_string }}? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: take the following as truth
+    reference: v0.1
+  0edd8660-f299-4819-a5ac-633c11177228: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 0edd8660-f299-4819-a5ac-633c11177228
+    jinja: 'Exercise: choose the most plausible alternative.
+        {{ input_sequence }} because...
+        {% for choice in answer_choices %}
+        - {{ choice }}
+        {% endfor %} ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: copa
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: exercise
+    reference: ''
+  a1f9951e-2b6b-4530-9636-9cdf4c1658c5: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: a1f9951e-2b6b-4530-9636-9cdf4c1658c5
+    jinja: 'Pick the more likely continuation to the following sentence:
+       {{ input_sequence }} as a result of:
+       {% for choice in answer_choices %}
+        - {{ choice }}
+        {% endfor %} ||| {% if label != -1 %}{{ answer_choices[label] }}{%endif%}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: copa
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: more likely
+    reference: ''
+  f32348cd-d3cb-4619-87b9-e24f99c78567: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: f32348cd-d3cb-4619-87b9-e24f99c78567
+    jinja: '{{ input_sequence }} because...
+        Choose between:
+        {% for choice in answer_choices %}
+        - {{ choice }}
+        {% endfor %} ||| {% if label != -1 %}{{ answer_choices[label] }}{%endif%}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: copa
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: choose
     reference: ''

@@ -183,13 +183,14 @@ def test_load_general_prompts(task_name):
     assert len(prompts) == 4
 
     for g, prompt, prompt_dict in prompts:
-        assert g == "GeneralFixedChoice"
+        assert g == "GenFC"
         expected_prompt = expected_prompts[prompt.id]
         assert prompt.answer_choices == expected_prompt.answer_choices
         assert prompt.jinja == expected_prompt.jinja
         assert prompt.name == expected_prompt.name
         assert prompt.choice_string == expected_prompt.choice_string
-        assert prompt_dict['name'] == f"{sanitize_name(prompt.name)}.GenFC"
-        assert prompt_dict['category'] == "General"
+        assert prompt_dict['name'] == f"{sanitize_name(prompt.name)}"
+        assert prompt_dict['category'] == "GeneralFixedChoice"
         assert prompt_dict['original_task'] == (task_name == 'craigslist_bargains')
         assert prompt_dict['prompt_task'] == 'craigslist_bargains'
+        assert prompt_dict['task_mode'] == 'CLASSIFICATION'

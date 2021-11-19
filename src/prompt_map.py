@@ -284,14 +284,15 @@ def load_generalized_prompts(
                 prompt.choice_string = mcq_choice_str
 
         out.append((
-            prompt_file_dict['group_name'],
+            prompt_file_dict['short_name'],
             prompt,
             {
                 "name"         : f"{sanitize_name(prompt.name)}",
-                "category"     : "General",
+                "category"     : prompt_file_dict['group_name'],
                 "original_task": prompt.metadata.original_task == task_name,
                 "prompt_task"  : prompt.metadata.original_task,
-                "is_mcq"       : prompt.metadata.is_mcq
+                "is_mcq"       : prompt.metadata.is_mcq,
+                "task_mode"    : prompt.metadata.task_mode
             }
         ))
 

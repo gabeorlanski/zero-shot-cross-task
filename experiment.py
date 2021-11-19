@@ -4,10 +4,11 @@ from omegaconf import DictConfig, OmegaConf
 from unidecode import unidecode
 from pathlib import Path
 
+from datasets import set_caching_enabled
 from src.experiment import run_experiments
 from src.prompt_map import load_prompts, load_answer_choice_experiment_prompts, \
     load_generalized_prompts
-from src.preprocessors import TaskPreprocessor
+from src.preprocessors import FixedChoiceTaskPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ def run(cfg: DictConfig):
     dataset_name = task_cfg.get("parent_dataset", task_name)
     categories = task_cfg['category']
 
+    set_caching_enabled(cfg['disable_caching'])
+
     if isinstance(categories, str):
         categories = [categories]
     else:
@@ -76,8 +79,8 @@ def run(cfg: DictConfig):
         if cfg['prompt_path'] is None:
             raise ValueError("Need a path to prompts for cross task")
         preprocessor_args = OmegaConf.to_object(task_cfg['preprocessor'])
-        preprocessor_cls = TaskPreprocessor.by_name(preprocessor_args.pop('name'))
-        preprocessor: TaskPreprocessor = preprocessor_cls(**preprocessor_args)
+        preprocessor_cls = FixedChoiceTaskPreprocessor.by_name(preprocessor_args.pop('name'))
+        preprocessor: FixedChoiceTaskPreprocessor = preprocessor_cls(**preprocessor_args)
 
         prompts_to_use = load_generalized_prompts(
             PROJECT_ROOT.joinpath(cfg['prompt_path']),
