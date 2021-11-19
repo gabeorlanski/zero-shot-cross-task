@@ -713,7 +713,7 @@ templates:
        {{ input_sequence }} as a result of:
        {% for choice in answer_choices %}
         - {{ choice }}
-        {% endfor %} ||| {% if label != -1 %}{{ answer_choices[label] }}{%endif%}'
+        {% endfor %} ||| {{ answer_choices[label] }}'
     metadata: !TemplateMetadata
       choices_in_prompt: true
       metrics:
@@ -740,4 +740,75 @@ templates:
       is_mcq: false
       task_mode: CLASSIFICATION
     name: choose
+    reference: ''
+  14e73f39-a0d1-44c2-b9a4-4e48f9f1608e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 14e73f39-a0d1-44c2-b9a4-4e48f9f1608e
+    jinja: 'Does the word "{{domain}}" have the same meaning in these two sentences?
+        {{ choice_string }}?
+        {{premise}}
+        {{hypothesis}}
+        ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: wic
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: question-context-meaning-with-label
+    reference: Generalized question-context format with label
+  3503ead5-4fa5-4f77-95dc-f0c2ed3eecdc: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 3503ead5-4fa5-4f77-95dc-f0c2ed3eecdc
+    jinja: 'Does the word "{{domain}}" have the same meaning in these two sentences?
+      {{premise}}
+      {{hypothesis}}
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: wic
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: question-context-meaning
+    reference: Generalized question-context format
+  611d13dc-d414-4b9b-9204-e4f325e859e7: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 611d13dc-d414-4b9b-9204-e4f325e859e7
+    jinja: 'Homework
+      Decide whether the word "{{domain}}" is used with the same meaning in the two
+      following sentences. Answer by yes or no.
+      {{premise}}
+      {{hypothesis}}
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: wic
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: grammar_homework
+    reference: ''
+  725b5ed0-7728-4890-95a4-a74cb7ae1bb4: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 725b5ed0-7728-4890-95a4-a74cb7ae1bb4
+    jinja: 'Sentence A: {{premise}}
+      Sentence B: {{ hypothesis}}
+      "{{ domain }}" has a similar meaning in sentences A and B. {{choice_string}}?
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: wic
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: affirmation_true_or_false
     reference: ''
