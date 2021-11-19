@@ -344,7 +344,7 @@ def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
             np.array(targets_ints), np.array(preds_ints)
         ))
         logger.info(f"{'mean_multiclass_f1':>20} "
-                    f"{final_metrics['mean_%dclass_f1'%len(fixed_choices)]:.3f}")
+                    f"{final_metrics['mean_multclass_f1']:.3f}")
 
     final_metrics['input_len/mean'] = np.mean(input_lens)
     final_metrics['input_len/median'] = np.median(input_lens)
