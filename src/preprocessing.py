@@ -48,16 +48,19 @@ def preprocess_dataset(
 
     def tokenize_dataset(prompt_str, output_str, choices, idx):
         labels_tokenized = tokenizer(output_str, max_length=256, truncation=True)
-        if use_only_correct_choice:
-            choices_tokenized = labels_tokenized['input_ids']
-        else:
-            choices_for_tok = choices
-            if lowercase_choices:
-                choices_for_tok = list(map(lambda c: c.lower(), choices))
-            choices_tokenized = tokenizer(
-                choices_for_tok, max_length=256, truncation=True
-            )['input_ids']
-            choices_tokenized = [i for choice_ids in choices_tokenized for i in choice_ids]
+        # if use_only_correct_choice:
+        #     choices_tokenized = labels_tokenized['input_ids']
+        # else:
+        #     choices_for_tok = choices
+        #     if lowercase_choices:
+        #         choices_for_tok = list(map(lambda c: c.lower(), choices))
+        #     choices_tokenized = tokenizer(
+        #         choices_for_tok, max_length=256, truncation=True
+        #     )['input_ids']
+        #     choices_tokenized = [i for choice_ids in choices_tokenized for i in choice_ids]
+        choices_tokenized = tokenizer(
+            "answer choice", max_length=256, truncation=True
+        )['input_ids']
 
         out = {
             "labels"           : labels_tokenized['input_ids'],

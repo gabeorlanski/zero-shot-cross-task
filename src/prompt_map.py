@@ -136,7 +136,8 @@ def load_prompts(
         # Add the group name and the prompt name to the list of prompts to use.
         prompts_to_use.append(
             (DEFAULT_PROMPT_GROUP, prompt, {
-                "name": prompt.name, "category": categories[0], "original_task": [prompt_task]
+                "name"         : prompt.name, "category": categories[0],
+                "original_task": True, "prompt_task": prompt_task
             })
         )
 

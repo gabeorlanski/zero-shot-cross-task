@@ -337,7 +337,7 @@ def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
             np.array(targets_ints), np.array(preds_ints)
         )
         for l, f1 in enumerate(f1_metrics['f1_by_class']):
-            met_name = f"f1_{fixed_choices[l]}:"
+            met_name = f"f1_{fixed_choices[l]}"
             logger.info(f"{met_name:>20} {f1:.3f}")
             final_metrics[met_name] = f1
         final_metrics.update(mt.mean_multiclass_f1(len(fixed_choices))(
