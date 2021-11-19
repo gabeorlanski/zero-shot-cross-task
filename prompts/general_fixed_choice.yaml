@@ -215,7 +215,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: financial_phrasebank
+      original_task: financial_phrasebank/sentences_allagree
       is_mcq: false
       task_mode: CLASSIFICATION
     name: share_price_option
@@ -231,7 +231,7 @@ templates:
       choices_in_prompt: false
       metrics:
         - Accuracy
-      original_task: financial_phrasebank
+      original_task: financial_phrasebank/sentences_allagree
       is_mcq: false
       task_mode: CLASSIFICATION
     name: sentiment
@@ -247,7 +247,7 @@ templates:
       choices_in_prompt: false
       metrics:
         - Accuracy
-      original_task: financial_phrasebank
+      original_task: financial_phrasebank/sentences_allagree
       is_mcq: false
       task_mode: CLASSIFICATION
     name: complementary_industries
@@ -264,7 +264,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: financial_phrasebank
+      original_task: financial_phrasebank/sentences_allagree
       is_mcq: false
       task_mode: CLASSIFICATION
     name: bullish_neutral_bearish
@@ -700,7 +700,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: copa
+      original_task: super_glue/copa
       is_mcq: false
       task_mode: CLASSIFICATION
     name: exercise
@@ -718,7 +718,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: copa
+      original_task: super_glue/copa
       is_mcq: false
       task_mode: CLASSIFICATION
     name: more likely
@@ -736,7 +736,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: copa
+      original_task: super_glue/copa
       is_mcq: false
       task_mode: CLASSIFICATION
     name: choose
@@ -754,7 +754,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: wic
+      original_task: super_glue/wic
       is_mcq: false
       task_mode: ENTAILMENT
     name: question-context-meaning-with-label
@@ -771,7 +771,7 @@ templates:
       choices_in_prompt: false
       metrics:
         - Accuracy
-      original_task: wic
+      original_task: super_glue/wic
       is_mcq: false
       task_mode: ENTAILMENT
     name: question-context-meaning
@@ -790,7 +790,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: wic
+      original_task: super_glue/wic
       is_mcq: false
       task_mode: ENTAILMENT
     name: grammar_homework
@@ -807,7 +807,7 @@ templates:
       choices_in_prompt: true
       metrics:
         - Accuracy
-      original_task: wic
+      original_task: super_glue/wic
       is_mcq: false
       task_mode: ENTAILMENT
     name: affirmation_true_or_false
