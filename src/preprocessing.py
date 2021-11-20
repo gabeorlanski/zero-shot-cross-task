@@ -9,7 +9,7 @@ from datasets import Dataset
 import json
 import numpy as np
 import tensorflow as tf
-from functools import partial
+from src.common import all_equal
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,11 @@ def preprocess_dataset(
         prompt,
         num_proc=4,
         batch_size=1,
-        lowercase_choices: bool = False,
-        preprocessor: Optional[FixedChoiceTaskPreprocessor] = None
+        preprocessor: Optional[FixedChoiceTaskPreprocessor] = None,
 ):
+    # If we are using a preprocessor, make sure it has the necessary custom
+    # attributes for use with the preprocessor. This is a soft check to make
+    # sure the prompts are generalizable.
     if preprocessor:
         if not hasattr(prompt.metadata, 'task_mode'):
             raise AttributeError(f"Trying to use a preprocessor but prompt "
@@ -43,28 +45,39 @@ def preprocess_dataset(
     else:
         preprocessed_dataset = dataset
 
+    # Map the prompt across the entire dataset.
     prompt_mapper = PromptMapper(
         prompt,
         tokenizer,
         num_proc=num_proc,
-        batch_size=batch_size,
-        lowercase_choices=lowercase_choices
+        batch_size=batch_size
     )
-    result = prompt_mapper(task, preprocessed_dataset)
+    ds_with_prompt = prompt_mapper(task, preprocessed_dataset)
+
+    # The scope of this project is only fixed choice tasks where the choice is
+    # constant across all examples. Thus we check here to make sure that is the
+    # case.
+    assert all_equal(ds_with_prompt['choices']), "Not fixed choice task."
+    choice_set = ds_with_prompt[0]['choices']
+    logger.info(f"Found choice set of [{', '.join(choice_set)}]")
+    choice_set_tokenized = list(map(
+        lambda c: tokenizer(c, add_special_tokens=False)['input_ids'],
+        choice_set
+    ))
 
     logger.info(f"Tokenizing the dataset")
 
     # Need to convert it to a TF dataset so that I can use T5's rank
     # classification processor.
-    tensor_slices = {column: result[column] for column in result.column_names}
+    tensor_slices = {column: ds_with_prompt[column] for column in ds_with_prompt.column_names}
     tf_dataset = tf.data.Dataset.from_tensor_slices(
         tensor_slices
     )
     data = rank_classification(
         tf_dataset,
-        inputs_fn=lambda ex: tf.fill((len(ex['choices']),), ex["prompt"]),
-        targets_fn=lambda ex: ex['choices'],
-        is_correct_fn=lambda ex: tf.equal(ex['choices'], ex['output']),
+        inputs_fn=lambda ex: tf.fill((len(choice_set),), ex["prompt"]),
+        targets_fn=lambda ex: choice_set,
+        is_correct_fn=lambda ex: tf.equal(choice_set, tf.strings.strip(ex['output'])),
         mode='eval'
     )
 
@@ -74,35 +87,33 @@ def preprocess_dataset(
             dataset_records[k].append(v)
 
     final_dataset = Dataset.from_dict(dataset_records).map(
-        lambda ex: tokenize_dataset(ex, tokenizer),
+        lambda ex: tokenize_rank_choices(ex, tokenizer),
         num_proc=num_proc,
         remove_columns=list(dataset_records)
     ).sort('input_len', reverse=True)
-    return final_dataset, result, prompt
+    return final_dataset, ds_with_prompt, choice_set_tokenized
 
 
-def tokenize_dataset(
+def tokenize_rank_choices(
         ex,
-        tokenizer
+        tokenizer,
+        is_string_input=False
 ):
-    inputs_tokenized = tokenizer(ex['inputs'].decode('utf-8'), max_length=1024, truncation=True)
+    inputs_tokenized = tokenizer(
+        ex['inputs'].decode('utf-8') if not is_string_input else ex['inputs'],
+        max_length=1024, truncation=True)
     labels_tokenized = tokenizer(
-        ex['targets'].decode('utf-8'),
+        ex['targets'].decode('utf-8') if not is_string_input else ex['targets'],
         max_length=256,
         truncation=True
     )['input_ids']
-    target_tokenized = tokenizer(
-        ex['targets'].decode('utf-8'),
-        max_length=256,
-        truncation=True,
-        add_special_tokens=False
-    )['input_ids']
     return {
         "idx"       : ex['idx'],
+        "ex_idx"    : ex['idx'][0],
+        "choice_idx": ex['idx'][1],
         "is_correct": ex['is_correct'],
         "labels"    : labels_tokenized,
         "labels_len": len(labels_tokenized),
-        "target"    : target_tokenized,
         "input_len" : len(inputs_tokenized['input_ids']),
         **inputs_tokenized
     }

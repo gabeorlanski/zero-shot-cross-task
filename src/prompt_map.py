@@ -28,14 +28,12 @@ class PromptMapper:
             num_proc=1,
             remove_columns=None,
             batch_size=None,
-            lowercase_choices: bool = False
     ):
         self.prompt = prompt
         self.tokenizer = tokenizer
         self.num_proc = num_proc
         self.remove_columns = remove_columns or []
         self.batch_size = batch_size or 1
-        self.lowercase_choices = lowercase_choices
 
     def _preprocess_dataset(self, dataset: Dataset) -> Dataset:
         raise NotImplementedError()
@@ -54,25 +52,28 @@ class PromptMapper:
         # Map the prompt to the dataset and remove columns as needed.
         if self.batch_size > 1:
             return preprocessed.map(
-                lambda b: self.apply_prompt_to_batch(
-                    self.prompt, b
+                lambda b, idx: self.apply_prompt_to_batch(
+                    self.prompt, b, idx
                 ),
                 num_proc=self.num_proc,
                 remove_columns=self.remove_columns,
                 batched=True,
-                batch_size=self.batch_size
+                batch_size=self.batch_size,
+                with_indices=True
             )
 
         return preprocessed.map(
-            lambda b: self.apply_prompt_to_example(
-                self.prompt, b
+            lambda b, idx: self.apply_prompt_to_example(
+                self.prompt, b, idx
             ),
             num_proc=self.num_proc,
-            remove_columns=self.remove_columns)
+            remove_columns=self.remove_columns,
+            with_indices=True
+        )
 
     @staticmethod
-    def apply_prompt_to_batch(prompt, batch):
-        out = {"prompt": [], "output": [], "choices": []}
+    def apply_prompt_to_batch(prompt, batch, batch_idx):
+        out = {"prompt": [], "output": [], "choices": [], 'idx': batch_idx}
         example_num = 0
         keys = list(batch.keys())
         while True:
@@ -98,14 +99,15 @@ class PromptMapper:
         return out
 
     @staticmethod
-    def apply_prompt_to_example(prompt, example):
+    def apply_prompt_to_example(prompt, example, idx):
         prompt_str, output_str = prompt.apply(example)
         choices = prompt.get_answer_choices_list(example) or []
 
         return {
             "prompt" : prompt_str,
             "output" : output_str,
-            "choices": choices
+            "choices": choices,
+            "idx"    : idx
         }
 
 
