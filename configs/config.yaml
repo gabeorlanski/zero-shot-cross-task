@@ -4,8 +4,6 @@ defaults:
 
 force: True
 model_name: "t5-small"
-batch_size: 8
-beams: 1
 num_proc: 4
 split: ???
 run_name: ???
