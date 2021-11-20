@@ -109,21 +109,21 @@ def generate_predictions_choices(
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
     )
-    loaders = []
+    sub_datasets = []
     for i in range(0, len(dataset), original_dataset_size):
         sub_dataset = dataset.select(range(i, i + original_dataset_size))
-        data_loader = torch.utils.data.DataLoader(
-            sub_dataset,
-            batch_size=batch_size,
-            collate_fn=collator,
-            shuffle=False
-        )
-        loaders.append(data_loader)
+        sub_datasets.append(sub_dataset)
     progress_bar = tqdm(total=total_batch_count, desc="Generating")
 
     predictions = defaultdict(list)
     with torch.no_grad():
-        for data_loader in loaders:
+        for ds in sub_datasets:
+            data_loader = torch.utils.data.DataLoader(
+                ds,
+                batch_size=batch_size,
+                collate_fn=collator,
+                shuffle=False
+            )
             for batch in data_loader:
                 generated = model(
                     input_ids=batch['input_ids'].to(device),
@@ -142,6 +142,7 @@ def generate_predictions_choices(
                     ).tolist()
                 )
                 progress_bar.update()
+        torch.cuda.empty_cache()
 
     progress_bar.close()
     return predictions
