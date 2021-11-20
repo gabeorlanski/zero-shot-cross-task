@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Optional
 from tqdm import tqdm
@@ -7,6 +8,7 @@ from t5.evaluation import metrics as mt
 import json
 import numpy as np
 from src.common import all_equal
+import seqio
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +37,6 @@ def serialize_prediction(
         prediction,
         target,
         input_seq,
-        decoder_input=None,
-        choices=None,
         choice_logits=None
 ) -> str:
     """
@@ -47,8 +47,6 @@ def serialize_prediction(
         prediction (list): List of prediction strings.
         target (str): The target string.
         input_seq (str): The input string.
-        decoder_input (str): The input that would be passed to T5 as the
-         decoder_input_ids
         choice_logits (dict): The choices (if exist) dict with log probabilities.
 
     """
@@ -57,84 +55,19 @@ def serialize_prediction(
         "prediction"   : prediction,
         "target"       : target,
         "input"        : input_seq,
-        "decoder_input": decoder_input,
-        "choices"      : choices,
         "choice_logits": choice_logits or {}
     })
 
 
-def generate_prediction_sequences(
-        out_path,
-        data_loader,
-        model,
-        tokenizer,
-        device,
-        max_gen_len,
-        generator_kwargs: Dict = None
-):
-    """
-    Generate predictions.
-
-    Args:
-        out_path (Path): Path to save to.
-        data_loader (torch.utils.data.DataLoader): DataLoader to use.
-        model: Model to use.
-        tokenizer: Tokenizer to use.
-        device: device to use.
-        max_gen_len (int): Maximum length to generate.
-        generator_kwargs: kwargs for generation.
-
-    Returns:
-        Path where predictions were saved.
-    """
-    logger.info(f"Generating Prediction Sequences.")
-    pred_path = out_path.joinpath('predictions.jsonl')
-    pred_file = pred_path.open('w', encoding="utf-8")
-    generator_kwargs = generator_kwargs or {}
-    data_iterator = tqdm(data_loader, desc="Generating")
-    for batch in data_iterator:
-        logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
-        generated = model.generate(
-            input_ids=batch['input_ids'].to(device),
-            attention_mask=batch['attention_mask'].to(device),
-            max_length=min(max_gen_len, 64),
-            early_stopping=True,
-            **generator_kwargs
-        )
-
-        batch_indices = batch['idx']
-
-        preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
-        source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
-        gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
-
-        num_beams = generator_kwargs.get('num_return_sequences', 1)
-        if num_beams * len(gold) != len(preds):
-            raise ValueError(f"Number of beams {num_beams} for {len(gold)} items"
-                             f" does not match the number of predictions found {len(preds)}.")
-
-        logger.debug("Saving JSON lines for batch")
-        for i, target in enumerate(gold):
-            pred_file.write(serialize_prediction(
-                batch_indices[i].item(),
-                preds[i * num_beams:(i + 1) * num_beams],
-                target,
-                source[i]
-            ) + '\n')
-    data_iterator.close()
-    pred_file.close()
-    return pred_path
+def score_choice(logits, choice, length_normalize: bool = False):
+    return torch.sum(logits[:, :, choice], (1, 2)) / (1 if not length_normalize else len(choice))
 
 
 def generate_predictions_choices(
-        out_path,
         data_loader,
         model,
-        tokenizer,
         device,
-        source_dataset,
         length_normalize=False,
-        force_not_fixed_choice=False,
 ):
     """
     Generate predictions when using answer choices.
@@ -151,119 +84,36 @@ def generate_predictions_choices(
         Path where predictions were saved.
     """
     logger.info(f"Generating Choices")
-    pred_path = out_path.joinpath('predictions.jsonl')
-    pred_file = pred_path.open('w', encoding="utf-8")
     data_iterator = tqdm(data_loader, desc="Generating")
 
-    # Hacky fix to check if it is a fixed choice task
-    is_fixed_choice = all_equal(source_dataset['choices']) and not force_not_fixed_choice
-
-    logger.info(f"Fixed choice is {'not' if not is_fixed_choice else ''} enabled.")
-
+    predictions = defaultdict(list)
     with torch.no_grad():
         for batch in data_iterator:
-            logger.debug(f"Got batch with shape {batch['input_ids'].shape}")
-            input_ids = batch['input_ids'].to(device)
+            if batch['idx'].shape[0] != 1:
+                raise ValueError('Only batch size 1 supported at the moment.')
+
             generated = model(
-                input_ids=input_ids,
+                input_ids=batch['input_ids'].to(device),
                 attention_mask=batch['attention_mask'].to(device),
-                labels=batch['choices_tokenized'].to(device)
+                labels=batch['labels'].to(device)
             )
-            ex_idx = batch['idx']
-
-            source = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
-            gold = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
-
-            choices_by_example = []
-            choice_probs = torch.zeros(
-                (len(gold), max(map(len, source_dataset['choices'])))
+            predictions['targets'].append(
+                (batch['idx'][0].tolist(), batch['is_correct'][0].tolist(), 1.0)
             )
-
-            if is_fixed_choice:
-                # Get the choices for this sample
-                choice_ids = source_dataset[ex_idx[0].item()]['choice_ids']
-                choices = source_dataset[ex_idx[0].item()]['choices']
-                # For each choice, sum up the probabilities of it being
-                # generated.
-                for j, choice in enumerate(choice_ids):
-                    choice_logits = torch.sum(generated.logits[:, :, choice], (1, 2))
-                    # Choices can have different token lengths, which would
-                    # punish longer options, apply length normalization to fix
-                    # this.
-                    if length_normalize:
-                        # Bug w/ pytorch where tensor /= len(list) does not
-                        # give correct value
-                        choice_len = len(choice)
-                        choice_logits = choice_logits / choice_len
-
-                    choice_probs[:, j] = choice_logits
-
-                for i in range(len(gold)):
-                    choices_by_example.append(
-                        {c: p.item() for c, p in zip(choices, choice_probs[i])}
-                    )
-            else:
-                for i in range(len(gold)):
-                    choice_ids = source_dataset[ex_idx[i].item()]['choice_ids']
-                    choices = source_dataset[ex_idx[i].item()]['choices']
-
-                    for j, choice in enumerate(choice_ids):
-                        choice_logits = generated.logits[i, :, choice].sum()
-
-                        # Choices can have different token lengths, which would
-                        # punish longer options, apply length normalization to fix
-                        # this.
-                        if length_normalize:
-                            choice_logits /= len(choice)
-
-                        choice_probs[i, j] = choice_logits
-
-                    choices_by_example.append(
-                        {c: p.item() for c, p in zip(choices, choice_probs[i])}
-                    )
-
-            logger.debug("Saving JSON lines for batch")
-            for i, target in enumerate(gold):
-                example_choice_probs = choices_by_example[i]
-
-                decoder_input_str = tokenizer.decode(
-                    batch['choices_tokenized'][i],
-                    skip_special_tokens=False
-                )
-                # Need to split on the EOS token.
-                decoder_input_strs = decoder_input_str.split(tokenizer.eos_token)
-
-                # If the last of the split strings start with pad or is empty
-                # skip it.
-                if decoder_input_strs:
-                    if (
-                            not decoder_input_strs[-1]
-                            or decoder_input_strs[-1][0] == tokenizer.pad_token
-                    ):
-                        decoder_input_strs = decoder_input_strs[:-1]
-
-                choices = source_dataset[ex_idx[i].item()]['choices']
-                prediction_choice = max(
-                    choices,
-                    key=lambda x: example_choice_probs[x]
-                )
-
-                pred_file.write(serialize_prediction(
-                    ex_idx[i].item(),
-                    [prediction_choice],
-                    target,
-                    source[i],
-                    f" {tokenizer.eos_token} ".join(map(lambda s: s.strip(), decoder_input_strs)),
-                    choices,
-                    example_choice_probs,
-                ) + '\n')
+            predictions['scores'].extend(
+                score_choice(
+                    generated.logits,
+                    batch['target'][0].tolist(),
+                    length_normalize=length_normalize
+                ).tolist()
+            )
 
     data_iterator.close()
-    pred_file.close()
-    return pred_path
+    # pred_file.close()
+    return predictions
 
 
-def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
+def evaluate(task, predictions, source_dataset, metrics, out_path):
     """
     Evaluate a prediction file based on given metrics.
     Args:
@@ -282,89 +132,58 @@ def evaluate(task, prediction_path, metrics, out_path, fixed_choices=None):
 
     logger.info(f"Evaluating predictions for {task}.")
 
-    targets = []
-    predictions = []
-    targets_ints = []
-    preds_ints = []
-    input_lens = []
-    class_to_id = {}
-    if fixed_choices:
-        for c in fixed_choices:
-            class_to_id[c] = len(class_to_id)
+    # This program is only made for fixed choice tasks. So we can assume all #
+    # of choices will stay the same.
+    num_choices = len(source_dataset[0]['choices'])
 
-    pred_dicts = map(lambda l: json.loads(l), prediction_path.read_text('utf-8').splitlines(False))
-    pbar = tqdm(desc="Reading")
-    for line in pred_dicts:
-        target = line['target']
+    final_metrics = mt.rank_classification(
+        predictions['targets'],
+        predictions['scores'],
+        num_classes=num_choices
+    )
 
-        targets.append(target)
-        predictions.append(line['prediction'][0])
+    aligned_preds = [[None] * num_choices for _ in range(len(source_dataset))]
+    aligned_targets = [None] * len(source_dataset)
 
-        if fixed_choices:
-            targets_ints.append(class_to_id[target])
-            preds_ints.append(class_to_id[line['prediction'][0]])
+    # Align the predictions with the targets and the source data so that they
+    # can be saved to a file. Also save them to their own arrays so that we can
+    # calculate per class F1
+    for target, score in zip(predictions['targets'], predictions['scores']):
+        (idx, choice_idx), is_correct, _ = target
+        if is_correct:
+            aligned_targets[idx] = choice_idx
+        aligned_preds[idx][choice_idx] = score
 
-        input_lens.append(len(line['input']))
+    f1_metrics = mt.sklearn_metrics_wrapper(
+        "fbeta_score",
+        metric_dict_str="f1_by_class",
+        metric_post_process_fn=lambda x: 100 * x,
+        beta=1,
+        labels=range(num_choices),
+        average=None
+    )(
+        np.array(aligned_preds).argmax(-1), np.array(aligned_targets)
+    )
 
-        pbar.update()
-    pbar.close()
+    for l, f1 in enumerate(f1_metrics['f1_by_class']):
+        final_metrics[f"f1_choice_{l}"] = f1
+    input_lens = list(map(len, source_dataset['prompt']))
+    final_metrics['input_len/mean'] = np.mean(input_lens)  # type: ignore
+    final_metrics['input_len/median'] = np.median(input_lens)  # type: ignore
+    final_metrics['input_len/std'] = np.std(input_lens)  # type: ignore
 
-    logger.info("Final Metrics:")
-    final_metrics = {}
-    targets_list_of_lists = [[t] for t in targets]
+    for k, v in final_metrics.items():
+        logger.info(f"{k:>20}: {v:.2f}")
 
-    for m in metrics:
-        # Some metrics require targets be a list of lists
-        if m in ["Squad", "Trivia QA"]:
-            use_targets = targets_list_of_lists
-        else:
-            use_targets = targets
-
-        for k, v in METRICS_DICT[m](use_targets, predictions).items():
-            met_name = f"{k}:"
-            logger.info(f"{met_name:>20} {v:.3f}")
-            final_metrics[k] = v
-
-    if fixed_choices is not None:
-        f1_metrics = mt.sklearn_metrics_wrapper(
-            "fbeta_score",
-            metric_dict_str="f1_by_class",
-            metric_post_process_fn=lambda x: 100 * x,
-            beta=1,
-            labels=range(len(fixed_choices)),
-            average=None
-        )(
-            np.array(targets_ints), np.array(preds_ints)
-        )
-        for l, f1 in enumerate(f1_metrics['f1_by_class']):
-            met_name = f"f1_choice_{l}"
-            logger.info(f"{met_name:>20} {f1:.3f}")
-            final_metrics[met_name] = f1
-        final_metrics.update(mt.sklearn_metrics_wrapper(
-            "fbeta_score",
-            metric_dict_str="mean_multiclass_f1",
-            metric_post_process_fn=lambda x: 100 * x,
-            beta=1,
-            labels=range(len(fixed_choices)),
-            average="macro"
-        )(
-            np.array(targets_ints), np.array(preds_ints)
-        ))
-        logger.info(f"{'mean_multiclass_f1':>20} "
-                    f"{final_metrics['mean_multiclass_f1']:.3f}")
-
-    final_metrics['input_len/mean'] = np.mean(input_lens)
-    final_metrics['input_len/median'] = np.median(input_lens)
-    final_metrics['input_len/std'] = np.std(input_lens)
-
-    target_lens = list(map(len, targets))
-    final_metrics['target_len/mean'] = np.mean(target_lens)
-    final_metrics['target_len/median'] = np.median(target_lens)
-    final_metrics['target_len/std'] = np.std(target_lens)
+    pred_file = out_path.joinpath('predictions.jsonl')
+    with pred_file.open('w', encoding='utf-8') as pred_fp:
+        for i, preds in enumerate(aligned_preds):
+            ex = source_dataset[i]
+            raise NotImplementedError()
 
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")
     with metrics_file.open('w', encoding='utf-8') as fp:
         fp.write(json.dumps(final_metrics, indent=True))
 
-    return metrics_file
+    return metrics_file, pred_file

@@ -55,7 +55,7 @@ class PromptMapper:
         if self.batch_size > 1:
             return preprocessed.map(
                 lambda b: self.apply_prompt_to_batch(
-                    self.prompt, self.tokenizer, b, self.lowercase_choices
+                    self.prompt, b
                 ),
                 num_proc=self.num_proc,
                 remove_columns=self.remove_columns,
@@ -65,14 +65,14 @@ class PromptMapper:
 
         return preprocessed.map(
             lambda b: self.apply_prompt_to_example(
-                self.prompt, self.tokenizer, b, self.lowercase_choices
+                self.prompt, b
             ),
             num_proc=self.num_proc,
             remove_columns=self.remove_columns)
 
     @staticmethod
-    def apply_prompt_to_batch(prompt, tokenizer, batch, lowercase_choices):
-        out = {"prompt": [], "output": [], "choices": [], "choice_ids": []}
+    def apply_prompt_to_batch(prompt, batch):
+        out = {"prompt": [], "output": [], "choices": []}
         example_num = 0
         keys = list(batch.keys())
         while True:
@@ -90,35 +90,22 @@ class PromptMapper:
             prompt_str, output_str = prompt.apply(example)
             choices = prompt.get_answer_choices_list(example) or []
 
-            if lowercase_choices:
-                choices_to_tokenize = list(map(lambda c: c.lower(), choices))
-            else:
-                choices_to_tokenize = choices
             out['prompt'].append(prompt_str)
             out['output'].append(output_str)
-            out['choice_ids'].append(
-                tokenizer(choices_to_tokenize, add_special_tokens=False)['input_ids']
-            )
             out['choices'].append(choices)
             example_num += 1
 
         return out
 
     @staticmethod
-    def apply_prompt_to_example(prompt, tokenizer, example, lowercase_choices):
+    def apply_prompt_to_example(prompt, example):
         prompt_str, output_str = prompt.apply(example)
         choices = prompt.get_answer_choices_list(example) or []
 
-        if lowercase_choices:
-            choices_to_tokenize = list(map(lambda c: c.lower(), choices))
-        else:
-            choices_to_tokenize = choices
-
         return {
-            "prompt"    : prompt_str,
-            "output"    : output_str,
-            "choices"   : choices,
-            "choice_ids": tokenizer(choices_to_tokenize, add_special_tokens=False)['input_ids']
+            "prompt" : prompt_str,
+            "output" : output_str,
+            "choices": choices
         }
 
 

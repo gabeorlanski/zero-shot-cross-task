@@ -11,7 +11,7 @@ from transformers import DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, T5Model, AutoTokenizer
 from omegaconf import OmegaConf
 
-from src.evaluation import evaluate, generate_prediction_sequences, generate_predictions_choices
+from src.evaluation import evaluate, generate_predictions_choices
 from src.tracking import create_run_cfg, save_run_to_wandb
 from src.common import sanitize_name
 from src.prompt_map import DEFAULT_PROMPT_GROUP
@@ -102,7 +102,6 @@ def single_experiment(
         tokenizer=tokenizer,
         prompt=prompt,
         num_proc=cfg.get('num_proc', 1),
-        use_only_correct_choice=cfg['evaluation'].get("use_only_correct_choice", False),
         lowercase_choices=cfg['evaluation'].get('lowercase_choices', False),
         preprocessor=preprocessor
     )
@@ -119,7 +118,7 @@ def single_experiment(
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
-        pad_to_multiple_of=4,
+        pad_to_multiple_of=1,
         max_length=1024,
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
@@ -127,53 +126,31 @@ def single_experiment(
 
     data_loader = torch.utils.data.DataLoader(
         tokenized,
-        batch_size=cfg['batch_size'],
+        batch_size=1,
         collate_fn=collator,
         shuffle=False
     )
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
-    logger.info(f"Max Decoder Input length is {max(map(len, tokenized['choices_tokenized']))}.")
 
     logger.info(f"Length Normalization = {cfg['evaluation'].get('length_normalization', False)}")
-    logger.info(f"Force Generation = {cfg['evaluation'].get('force_generation', False)}")
-    logger.info(f"Lowercase Choices = {cfg['evaluation'].get('lowercase_choices', False)}")
     device = torch.device(cfg['cuda_device'])
 
-    # TODO(gabeorlanski): Move generation into its own thing
-    if choices is None or cfg['evaluation'].get("force_generation", False):
-        result_file = generate_prediction_sequences(
-            out_path=results_path,
-            data_loader=data_loader,
-            model=model,
-            device=device,
-            tokenizer=tokenizer,
-            max_gen_len=max(tokenized['labels_len']) + 32,
-            generator_kwargs={
-                "num_beams"           : cfg['beams'],
-                "num_return_sequences": cfg['beams']
-            }
-        )
-    else:
-        result_file = generate_predictions_choices(
-            out_path=results_path,
-            data_loader=data_loader,
-            model=model,
-            device=device,
-            tokenizer=tokenizer,
-            source_dataset=original,
-            length_normalize=cfg['evaluation'].get('length_normalization', False)
-        )
+    predictions = generate_predictions_choices(
+        data_loader=data_loader,
+        model=model,
+        device=device,
+        length_normalize=cfg['evaluation'].get('length_normalization', False)
+    )
     logger.info("Finished generating the dataset with the prompt.")
     logger.info(f"Beginning evaluation of the predictions.")
-    evaluate(
+    result_file = evaluate(
         experiment_name,
-        result_file,
+        predictions,
+        source_dataset=original,
         metrics=prompt.metadata.metrics or ["Accuracy"],
         out_path=results_path,
-        fixed_choices=choices.split(" ||| ") if "{" not in choices else None
-        # If jinja, not fixed choices.
     )
 
     return original, results_path

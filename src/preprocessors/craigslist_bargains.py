@@ -75,9 +75,7 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         output_dict['seller_target'] = seller_target
         output_dict['label'] = self.label_to_int[label]
 
-        output_dict['additional_inputs'] = [
-            output_dict['listing_price']
-        ]
+        output_dict['additional_input_1'] = output_dict['listing_price']
         return output_dict
 
     def _get_label(self, intents, prices, targets):

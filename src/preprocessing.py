@@ -1,8 +1,15 @@
 import logging
+from collections import defaultdict
 from typing import Tuple, Optional
 
 from src.prompt_map import PromptMapper
 from src.preprocessors import FixedChoiceTaskPreprocessor, TaskMode
+from t5.data.preprocessors import rank_classification
+from datasets import Dataset
+import json
+import numpy as np
+import tensorflow as tf
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +21,6 @@ def preprocess_dataset(
         prompt,
         num_proc=4,
         batch_size=1,
-        use_only_correct_choice: bool = False,
         lowercase_choices: bool = False,
         preprocessor: Optional[FixedChoiceTaskPreprocessor] = None
 ):
@@ -46,37 +52,57 @@ def preprocess_dataset(
     )
     result = prompt_mapper(task, preprocessed_dataset)
 
-    def tokenize_dataset(prompt_str, output_str, choices, idx):
-        labels_tokenized = tokenizer(output_str, max_length=256, truncation=True)
-        if use_only_correct_choice:
-            choices_tokenized = labels_tokenized['input_ids']
-        else:
-            choices_for_tok = choices
-            if lowercase_choices:
-                choices_for_tok = list(map(lambda c: c.lower(), choices))
-            choices_tokenized = tokenizer(
-                choices_for_tok, max_length=256, truncation=True
-            )['input_ids']
-            choices_tokenized = [i for choice_ids in choices_tokenized for i in choice_ids]
-
-        out = {
-            "labels"           : labels_tokenized['input_ids'],
-            "labels_len"       : len(labels_tokenized['input_ids']),
-            "idx"              : idx,
-            "choices_tokenized": choices_tokenized,
-            **tokenizer(prompt_str, max_length=1024, truncation=True)
-        }
-        out["input_len"] = len(out['input_ids'])
-        return out
-
     logger.info(f"Tokenizing the dataset")
-    tokenized = result.map(
-        tokenize_dataset,
-        input_columns=["prompt", "output", "choices"],
-        remove_columns=result.column_names,
+
+    # Need to convert it to a TF dataset so that I can use T5's rank
+    # classification processor.
+    tensor_slices = {column: result[column] for column in result.column_names}
+    tf_dataset = tf.data.Dataset.from_tensor_slices(
+        tensor_slices
+    )
+    data = rank_classification(
+        tf_dataset,
+        inputs_fn=lambda ex: tf.fill((len(ex['choices']),), ex["prompt"]),
+        targets_fn=lambda ex: ex['choices'],
+        is_correct_fn=lambda ex: tf.equal(ex['choices'], ex['output']),
+        mode='eval'
+    )
+
+    dataset_records = defaultdict(list)
+    for d in data.as_numpy_iterator():
+        for k, v in d.items():
+            dataset_records[k].append(v)
+
+    final_dataset = Dataset.from_dict(dataset_records).map(
+        lambda ex: tokenize_dataset(ex, tokenizer),
         num_proc=num_proc,
-        with_indices=True
-
+        remove_columns=list(dataset_records)
     ).sort('input_len', reverse=True)
+    return final_dataset, result, prompt
 
-    return tokenized, result, prompt
+
+def tokenize_dataset(
+        ex,
+        tokenizer
+):
+    inputs_tokenized = tokenizer(ex['inputs'].decode('utf-8'), max_length=1024, truncation=True)
+    labels_tokenized = tokenizer(
+        ex['targets'].decode('utf-8'),
+        max_length=256,
+        truncation=True
+    )['input_ids']
+    target_tokenized = tokenizer(
+        ex['targets'].decode('utf-8'),
+        max_length=256,
+        truncation=True,
+        add_special_tokens=False
+    )['input_ids']
+    return {
+        "idx"       : ex['idx'],
+        "is_correct": ex['is_correct'],
+        "labels"    : labels_tokenized,
+        "labels_len": len(labels_tokenized),
+        "target"    : target_tokenized,
+        "input_len" : len(inputs_tokenized['input_ids']),
+        **inputs_tokenized
+    }

@@ -44,7 +44,7 @@ def run(cfg: DictConfig):
     dataset_name = task_cfg.get("parent_dataset", task_name)
     categories = task_cfg['category']
 
-    set_caching_enabled(cfg['disable_caching'])
+    set_caching_enabled(not cfg['disable_caching'])
 
     if isinstance(categories, str):
         categories = [categories]

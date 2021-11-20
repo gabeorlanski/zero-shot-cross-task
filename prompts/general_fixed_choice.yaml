@@ -42,7 +42,7 @@ templates:
     choice_string: '"yes", "no", "neither",  or "unknown"'
     id: 78d1b487-c535-4a0d-ae49-055d321db3fd
     jinja: 'The following conversation is a negotiation on craigslist. The first speaker
-       is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and additional_inputs|length > 0 else "N/A"}}.
+       is the buyer, and the second speaker is the seller. The listed price was ${{additional_input_1 if additional_input_1 is defined  else "N/A"}}.
        {{ input_sequence }}
        Was this a good deal for the seller? Answer {{ choice_string }}.
        ||| {{ answer_choices[label] }}'
@@ -65,7 +65,7 @@ templates:
       d) unknown'
     id: a1dbb258-2e5c-4160-986b-46fc03546965
     jinja: 'The following conversation is a negotiation on craigslist. The first speaker
-        is the buyer, and the second speaker is the seller. The listed price was ${{additional_inputs[0] if additional_inputs is defined and (additional_inputs|length) > 0 else "N/A"}}.
+        is the buyer, and the second speaker is the seller. The listed price was ${{additional_input_1 if additional_inputs is defined and (additional_inputs|length) > 0 else "N/A"}}.
         {{ input_sequence }}
         Question: Which party got the better deal? Choose from:
         {{ choice_string }}
