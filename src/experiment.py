@@ -125,7 +125,6 @@ def single_experiment(
 
     predictions = generate_predictions_choices(
         dataset=tokenized.sort('choice_idx'),
-        batch_size=cfg['batch_size'],
         tokenizer=tokenizer,
         model=model,
         device=device,

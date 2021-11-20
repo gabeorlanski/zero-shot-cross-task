@@ -19,13 +19,14 @@ from src.preprocessing import preprocess_dataset
 @pytest.mark.parametrize("prompt_name", ["claim true/false/inconclusive", "guaranteed true"])
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
-def test_generate_prediction_choices(prompt_name, length_normalized):
+@pytest.mark.parametrize("device_name", ['cpu', 0], ids=["CPU", "GPU"])
+def test_generate_prediction_choices(prompt_name, length_normalized, device_name):
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
     torch.use_deterministic_algorithms(True)
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
     original_dataset = load_dataset("anli", split="train_r1[:16]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
-    device = torch.device('cpu')
+    device = torch.device(device_name)
     model = T5ForConditionalGeneration.from_pretrained('t5-small').to(device)
     model.eval()
 
@@ -53,14 +54,13 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
             )
             choice_idx = batch['choice_idx'][0]
             logits = model_output.logits
-            expected_scores.extend(
-                evaluation.score_choice(logits, choices_tokenized[choice_idx],
-                                        length_normalized).tolist()
+            expected_scores.append(
+                sum(logits[0, i, j] for i in range(logits.shape[1]) for j in choices_tokenized[choice_idx]).item()
+                / (1 if not length_normalized else len(choices_tokenized[choice_idx]))
             )
 
     result = evaluation.generate_predictions_choices(
         tokenized.sort('choice_idx'),
-        batch_size=2,
         tokenizer=tokenizer,
         choices_tokenized=choices_tokenized,
         model=model,
