@@ -173,7 +173,7 @@ def evaluate(
     sorted_scores = np.sort(aligned_preds, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(aligned_preds)+1
+    ranks = np.argsort(-aligned_preds)+1
 
     final_metrics['logits/range_mean'] = np.mean(scores_ptp)  # type: ignore
     final_metrics['logits/range_std'] = np.std(scores_ptp)  # type: ignore

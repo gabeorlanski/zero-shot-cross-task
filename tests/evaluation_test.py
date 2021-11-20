@@ -113,7 +113,7 @@ def test_evaluate(tmpdir):
     sorted_scores = np.sort(pred_scores, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(pred_scores)+1
+    ranks = np.argsort(-np.array(pred_scores))+1
 
     expected_metrics = mt.rank_classification(
         predictions['targets'],

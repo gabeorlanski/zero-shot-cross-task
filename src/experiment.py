@@ -197,9 +197,9 @@ def run_experiments(
         # Some of the template names have absurd amount of bad characters.
         # So to remove them we need to first unidecode it, then clean it,
         # then remove duplicate characters
-        prompt_fn = prompt_dict['name']
+        prompt_fn = sanitize_name(prompt_dict['name'])
         if prompt_dict.get('prompt_task', None) is not None:
-            prompt_fn = f"{prompt_dict.get('prompt_task', None)}.{prompt_fn}"
+            prompt_fn = f"{sanitize_name(prompt_dict.get('prompt_task', None))}.{prompt_fn}"
 
         if prompt_group != DEFAULT_PROMPT_GROUP:
             prompt_fn = f"{prompt_group}.{prompt_fn}"
