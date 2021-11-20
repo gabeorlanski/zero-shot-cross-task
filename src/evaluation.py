@@ -108,6 +108,7 @@ def generate_single_choice(
                     length_normalize=length_normalize
                 ).tolist()
             )
+            del generated
     progress_bar.close()
     del data_loader
     return targets, scores
@@ -169,7 +170,7 @@ def generate_predictions_choices(
         )
         predictions['targets'].extend(targets)
         predictions['scores'].extend(scores)
-        # torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
     return predictions
 

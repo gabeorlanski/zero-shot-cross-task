@@ -10,6 +10,7 @@ import torch
 import numpy as np
 from promptsource.templates import DatasetTemplates, Template
 from t5.evaluation import metrics as mt
+import os
 
 from src import evaluation
 from src.preprocessing import preprocess_dataset
@@ -19,6 +20,8 @@ from src.preprocessing import preprocess_dataset
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
 def test_generate_prediction_choices(prompt_name, length_normalized):
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+    torch.use_deterministic_algorithms(True)
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
     original_dataset = load_dataset("anli", split="train_r1[:16]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
@@ -50,12 +53,10 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
             )
             choice_idx = batch['choice_idx'][0]
             logits = model_output.logits
-            score = sum(
-                logits[0, i, j].item()
-                for i in range(logits.shape[1])
-                for j in choices_tokenized[choice_idx]
-            ) / (1 if not length_normalized else len(choices_tokenized[choice_idx]))
-            expected_scores.append(score)
+            expected_scores.extend(
+                evaluation.score_choice(logits, choices_tokenized[choice_idx],
+                                        length_normalized).tolist()
+            )
 
     result = evaluation.generate_predictions_choices(
         tokenized.sort('choice_idx'),
@@ -71,12 +72,12 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
     result['scores'] = list(sorted(
         list(enumerate(result['scores'])),
         key=lambda x: len(choices_tokenized) * result['targets'][x[0]][0][0] +
-                         result['targets'][x[0]][0][1]
+                      result['targets'][x[0]][0][1]
     ))
     expected_scores = list(sorted(
         list(enumerate(expected_scores)),
         key=lambda x: len(choices_tokenized) * expected_targets[x[0]][0][0] +
-                         expected_targets[x[0]][0][1]
+                      expected_targets[x[0]][0][1]
     ))
     result['scores'] = list(map(lambda e: e[1], result['scores']))
     expected_scores = list(map(lambda e: e[1], expected_scores))

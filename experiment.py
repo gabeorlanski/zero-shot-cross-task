@@ -1,5 +1,6 @@
 import logging
 import hydra
+import torch
 from omegaconf import DictConfig, OmegaConf
 from unidecode import unidecode
 from pathlib import Path
@@ -9,6 +10,7 @@ from src.experiment import run_experiments
 from src.prompt_map import load_prompts, load_answer_choice_experiment_prompts, \
     load_generalized_prompts
 from src.preprocessors import FixedChoiceTaskPreprocessor
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ def run(cfg: DictConfig):
     Args:
         cfg: Run configs
     """
+    os.environ['CUBLAS_WORKSPACE_CONFIG']=":4096:8"
+    torch.use_deterministic_algorithms(True)
     logger.info(f"Starting Experiment.")
     # Setup the seeds and logging
     seeds = dict(
