@@ -104,7 +104,7 @@ def generate_predictions_choices(
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
-        pad_to_multiple_of=1,
+        pad_to_multiple_of=2,
         max_length=1024,
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
@@ -112,7 +112,7 @@ def generate_predictions_choices(
     sub_datasets = []
     for i in range(0, len(dataset), original_dataset_size):
         sub_dataset = dataset.select(range(i, i + original_dataset_size))
-        sub_datasets.append(sub_dataset)
+        sub_datasets.append(sub_dataset.sort('input_len'))
     progress_bar = tqdm(total=total_batch_count, desc="Generating")
 
     predictions = defaultdict(list)
