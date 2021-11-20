@@ -87,7 +87,7 @@ def generate_single_choice(
         collate_fn=collator,
         shuffle=False
     )
-    progress_bar = tqdm(data_loader, desc="Generating")
+    progress_bar = tqdm(data_loader, desc=f"Generating '{tokenizer.decode(choice)}'")
 
     with torch.no_grad():
         for batch in progress_bar:
