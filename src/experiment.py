@@ -115,8 +115,6 @@ def single_experiment(
         logger.error("Variable number of choices found across examples. This is not supported.")
         raise ValueError("Variable number of choices found across examples. This is not supported.")
 
-
-
     logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
 
@@ -124,7 +122,7 @@ def single_experiment(
     device = torch.device(cfg['cuda_device'])
 
     predictions = generate_predictions_choices(
-        dataset=tokenized.sort('choice_idx'),
+        dataset=tokenized.sort('input_len', reverse=True),
         tokenizer=tokenizer,
         model=model,
         device=device,
