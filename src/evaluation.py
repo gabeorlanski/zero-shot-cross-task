@@ -63,6 +63,52 @@ def score_choice(logits, choice, length_normalize: bool = False):
     return torch.sum(logits[:, :, choice], (1, 2)) / (1 if not length_normalize else len(choice))
 
 
+def generate_single_choice(
+        ds,
+        model,
+        tokenizer,
+        length_normalize,
+        batch_size,
+        device,
+        choice
+):
+    targets = []
+    scores = []
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=2,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
+    )
+    data_loader = torch.utils.data.DataLoader(
+        ds,
+        batch_size=batch_size,
+        collate_fn=collator,
+        shuffle=False
+    )
+    progress_bar = tqdm(data_loader, desc="Generating")
+    for batch in progress_bar:
+        generated = model(
+            input_ids=batch['input_ids'].to(device),
+            attention_mask=batch['attention_mask'].to(device),
+            labels=batch['labels'].to(device)
+        )
+        for idx, is_correct in zip(batch['idx'].tolist(), batch['is_correct'].tolist()):
+            targets.append(
+                (idx, is_correct, 1.0)
+            )
+        scores.extend(
+            score_choice(
+                generated.logits,
+                choice,
+                length_normalize=length_normalize
+            ).tolist()
+        )
+    progress_bar.close()
+    return targets, scores
+
+
 def generate_predictions_choices(
         dataset: Dataset,
         batch_size: int,
@@ -95,56 +141,34 @@ def generate_predictions_choices(
             number of examples.
     """
     logger.info(f"Generating Choices")
-
     original_dataset_size = len(dataset) // len(choices_tokenized)
     logger.info(f"Original dataset size: {original_dataset_size}")
     total_batch_count, rem = divmod(original_dataset_size, batch_size)
     total_batch_count += rem > 0
     total_batch_count *= len(choices_tokenized)
 
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=2,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
     sub_datasets = []
     for i in range(0, len(dataset), original_dataset_size):
         sub_dataset = dataset.select(range(i, i + original_dataset_size))
         sub_datasets.append(sub_dataset.sort('input_len'))
-    progress_bar = tqdm(total=total_batch_count, desc="Generating")
 
     predictions = defaultdict(list)
     with torch.no_grad():
-        for ds in sub_datasets:
-            data_loader = torch.utils.data.DataLoader(
+        for i, ds in enumerate(sub_datasets):
+            targets, scores = generate_single_choice(
                 ds,
-                batch_size=batch_size,
-                collate_fn=collator,
-                shuffle=False
+                model,
+                tokenizer,
+                length_normalize,
+                batch_size,
+                device,
+                choices_tokenized[i]
             )
-            for batch in data_loader:
-                generated = model(
-                    input_ids=batch['input_ids'].to(device),
-                    attention_mask=batch['attention_mask'].to(device),
-                    labels=batch['labels'].to(device)
-                )
-                for idx, is_correct in zip(batch['idx'].tolist(), batch['is_correct'].tolist()):
-                    predictions['targets'].append(
-                        (idx, is_correct, 1.0)
-                    )
-                predictions['scores'].extend(
-                    score_choice(
-                        generated.logits,
-                        choices_tokenized[batch['choice_idx'][0].item()],
-                        length_normalize=length_normalize
-                    ).tolist()
-                )
-                progress_bar.update()
+            predictions['targets'].extend(targets)
+            predictions['scores'].extend(scores)
+
         torch.cuda.empty_cache()
 
-    progress_bar.close()
     return predictions
 
 
