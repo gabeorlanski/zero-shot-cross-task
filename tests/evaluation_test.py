@@ -1,96 +1,31 @@
+import json
+import math
+
 import pytest
 from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
 from datasets import load_dataset
 from pathlib import Path
 from unittest.mock import MagicMock
 import torch
-import math
-import json
+import numpy as np
+from promptsource.templates import DatasetTemplates, Template
+from t5.evaluation import metrics as mt
+
 from src import evaluation
 from src.preprocessing import preprocess_dataset
-from promptsource.templates import DatasetTemplates, Template
-
-
-def test_generate_prediction_sequences(tmpdir):
-    ds = load_dataset("anli", split="train_r1[:16]")
-    tokenizer = AutoTokenizer.from_pretrained("t5-small")
-
-    def tok(p, h, ex_idx):
-        labels = tokenizer(h)
-        source = tokenizer(p)
-        return {
-            "idx"      : ex_idx, "labels": labels['input_ids'],
-            "input_len": sum(source['attention_mask']), **source
-        }
-
-    ds = ds.map(  # type: ignore
-        tok,
-        input_columns=['premise', 'hypothesis'],
-        remove_columns=ds.column_names,
-        with_indices=True
-    ).sort("input_len")
-
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=4,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
-
-    data_loader = torch.utils.data.DataLoader(
-        ds,
-        batch_size=1,
-        collate_fn=collator,
-        shuffle=False
-    )
-
-    model = T5ForConditionalGeneration.from_pretrained('patrickvonplaten/t5-tiny-random')
-    model.eval()
-    model.generate = MagicMock()
-
-    expected_tokens = tokenizer(
-        ["This is a test for evaluation", "This is a second beam"],
-        padding="longest"
-    )['input_ids']
-    model.generate.return_value = torch.Tensor(expected_tokens).long().reshape(2, -1)
-
-    res_path = evaluation.generate_prediction_sequences(
-        Path(tmpdir),
-        data_loader,
-        model,
-        tokenizer,
-        torch.device("cpu"),
-        5,
-        {'num_return_sequences': 2}
-    )
-
-    assert res_path.stem == "predictions"
-    assert res_path.exists()
-
-    result = list(map(json.loads, res_path.read_text("utf-8").splitlines(False)))
-    assert len(result) == len(ds)
-
-    for i, v in enumerate(ds):
-        assert result[i]['prediction'] == ["This is a test for evaluation",
-                                           "This is a second beam"]
-
-        assert result[i]['target'] == tokenizer.decode(v['labels'], skip_special_tokens=True)
-        assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
 
 
 @pytest.mark.parametrize("prompt_name", ["claim true/false/inconclusive", "guaranteed true"])
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
-@pytest.mark.parametrize("force_not_fixed", [True, False],
-                         ids=["Force Not Fixed", "Not Fixed"])
-def test_generate_prediction_choices(tmpdir, prompt_name, length_normalized, force_not_fixed):
+def test_generate_prediction_choices(prompt_name, length_normalized):
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
-    original_dataset = load_dataset("anli", split="train_r1[:16]")
-    prompt:Template = DatasetTemplates('anli')[prompt_name]
-    choices = prompt.get_fixed_answer_choices_list()
+    original_dataset = load_dataset("anli", split="train_r1[:2]")
+    prompt: Template = DatasetTemplates('anli')[prompt_name]
+    model = T5ForConditionalGeneration.from_pretrained('t5-small').to('cpu')
+    model.eval()
 
-    tokenized, ds, prompt = preprocess_dataset(
+    tokenized, ds, choices_tokenized = preprocess_dataset(
         "Testing",
         original_dataset,
         tokenizer,
@@ -100,7 +35,7 @@ def test_generate_prediction_choices(tmpdir, prompt_name, length_normalized, for
 
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
-        pad_to_multiple_of=4,
+        pad_to_multiple_of=1,
         max_length=1024,
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
@@ -108,88 +43,145 @@ def test_generate_prediction_choices(tmpdir, prompt_name, length_normalized, for
 
     data_loader = torch.utils.data.DataLoader(
         tokenized,
-        batch_size=16,
+        batch_size=1,
         collate_fn=collator,
         shuffle=False
     )
 
-    choice_ids = list(map(
-        lambda c: tokenizer(c, add_special_tokens=False)['input_ids'],
-        choices)
-    )
-    single_batch = collator(list(tokenized))
-    model = T5ForConditionalGeneration.from_pretrained('t5-small')
-    model.eval()
+    expected_targets = []
+    expected_scores = []
 
-    expected_logits = model(
-        input_ids=single_batch['input_ids'],
-        attention_mask=single_batch['attention_mask'],
-        labels=single_batch['choices_tokenized']
-    ).logits
+    with torch.no_grad():
+        for batch in tokenized.to_dict(batched=True, batch_size=1):
+            model_output = model(
+                input_ids=torch.tensor(batch['input_ids'][0], device='cpu').unsqueeze(0),
+                attention_mask=torch.tensor(batch['attention_mask'][0], device='cpu').unsqueeze(0),
+                labels=torch.tensor(batch['labels'][0], device='cpu').unsqueeze(0)
+            )
 
-    expected_choice_probs = torch.zeros((expected_logits.shape[0], len(choices)))
-    for i in range(expected_logits.shape[0]):
-        for choice, tokens in enumerate(choice_ids):
-            for t in tokens:
-                expected_choice_probs[i, choice] += expected_logits[i, :, t].sum()
-            if length_normalized:
-                expected_choice_probs[i, choice] /= len(tokens)
+            expected_targets.append(
+                (batch['idx'][0], batch['is_correct'][0], 1.0)
+            )
+            choice_idx = batch['choice_idx'][0]
+            logits = model_output.logits
+            score = sum(
+                logits[0, i, j].item()
+                for i in range(logits.shape[1])
+                for j in choices_tokenized[choice_idx]
+            ) / (1 if not length_normalized else len(choices_tokenized[choice_idx]))
+            expected_scores.append(score)
 
-    res_path = evaluation.generate_predictions_choices(
-        Path(tmpdir),
-        data_loader,
-        model,
-        tokenizer,
-        torch.device("cpu"),
-        source_dataset=ds,
-        length_normalize=length_normalized,
-        force_not_fixed_choice=force_not_fixed
+    result = evaluation.generate_predictions_choices(
+        data_loader=data_loader,
+        choices_tokenized=choices_tokenized,
+        model=model,
+        device=torch.device('cpu'),
+        length_normalize=length_normalized
     )
 
-    assert res_path.stem == "predictions"
-    assert res_path.exists()
-
-    result = list(map(json.loads, res_path.read_text("utf-8").splitlines(False)))
-    assert len(result) == len(ds)
-
-    for i, v in enumerate(tokenized):
-        assert set(result[i]['choice_logits'].keys()) == set(choices)
-        assert result[i]['prediction'] == [
-            max(choices, key=lambda x: result[i]['choice_logits'][x])
-        ]
-
-        assert result[i]['target'] == tokenizer.decode(v['labels'], skip_special_tokens=True)
-        assert result[i]['input'] == tokenizer.decode(v['input_ids'], skip_special_tokens=True)
-
-        for j, choice in enumerate(choices):
-            expected = expected_choice_probs[i, j].item()
-            assert math.isclose(
-                result[i]['choice_logits'][choice],
-                expected,
-                rel_tol=1e-4
-            ), f"{result[i]['choice_logits'][choice]:.2f} != {expected:.2f}"
+    assert result['targets'] == expected_targets
+    assert np.allclose(result['scores'], expected_scores)
 
 
 def test_evaluate(tmpdir):
-    pred_file = Path(tmpdir).joinpath('predictions.jsonl')
-    preds = "A G D E E A Q".split()
-    targets = "A B C D E F G".split()
-    with pred_file.open('w', encoding='utf-8') as f:
-        for p, t in zip(preds, targets):
-            f.write(json.dumps(
-                {"prediction": [p, "NONE"], "target": t, "input": t, "choice_logits": {}}) + '\n')
+    tokenizer = AutoTokenizer.from_pretrained("t5-small")
+    original_dataset = load_dataset("anli", split="train_r1[:2]")
+    prompt: Template = DatasetTemplates('anli')["can we infer"]
+    choices = prompt.get_fixed_answer_choices_list()
+    num_choices = len(choices)
 
-    res_file = evaluation.evaluate("test", pred_file, [], Path(tmpdir))
-    assert res_file.stem == "metrics"
-    assert res_file.exists
-
-    result = json.loads(res_file.read_text('utf-8'))
-    assert result == {
-        'input_len/mean'   : 1.0,
-        'input_len/median' : 1.0,
-        'input_len/std'    : 0.0,
-        'target_len/mean'  : 1.0,
-        'target_len/median': 1.0,
-        'target_len/std'   : 0.0,
-        **evaluation.METRICS_DICT["Accuracy"](targets, preds)
+    tokenized, ds, _ = preprocess_dataset(
+        "Testing",
+        original_dataset,
+        tokenizer,
+        prompt,
+        num_proc=1
+    )
+    predictions = {
+        "targets": [([1, 2], False, 1.0), ([1, 1], True, 1.0), ([1, 0], False, 1.0),
+                    ([0, 2], False, 1.0), ([0, 1], False, 1.0), ([0, 0], True, 1.0)],
+        "scores" : [-55.96, -88.09, -32.92, -55.22, -89.0, -32.75]
     }
+
+    pred_scores = [
+        [-32.75, -89.0, -55.22],
+        [-32.92, -88.09, -55.96]
+    ]
+    targets = [1, 0]
+    preds = np.array(pred_scores).argmax(-1)
+
+    sorted_scores = np.sort(pred_scores, axis=-1)
+    scores_ptp = np.abs(np.ptp(sorted_scores, -1))
+    diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
+    ranks = np.argsort(pred_scores)
+
+    expected_metrics = mt.rank_classification(
+        predictions['targets'],
+        predictions['scores'],
+        num_classes=num_choices
+    )
+    f1_fn = mt.sklearn_metrics_wrapper(
+        "fbeta_score",
+        metric_dict_str="f1_by_class",
+        metric_post_process_fn=lambda x: 100 * x,
+        beta=1,
+        labels=range(num_choices),
+        average=None
+    )
+    f1_metrics = f1_fn(
+        preds, np.array(targets)
+    )
+    expected_metrics["f1_choice_1"] = f1_metrics['f1_by_class'][0]
+    expected_metrics["f1_choice_2"] = f1_metrics['f1_by_class'][1]
+    expected_metrics["f1_choice_3"] = f1_metrics['f1_by_class'][2]
+    expected_metrics['input_len/mean'] = np.mean(tokenized['input_len'])  # type: ignore
+    expected_metrics['input_len/std'] = np.std(tokenized['input_len'])  # type: ignore
+    expected_metrics['logits/range_mean'] = np.mean(scores_ptp)  # type: ignore
+    expected_metrics['logits/range_std'] = np.std(scores_ptp)  # type: ignore
+    expected_metrics['logits/diff_1_to_2_mean'] = np.mean(diff_places[:, 0])  # type: ignore
+    expected_metrics['logits/diff_1_to_2_std'] = np.std(diff_places[:, 0])  # type: ignore
+    expected_metrics['logits/diff_2_to_3_mean'] = np.mean(diff_places[:, 1])  # type: ignore
+    expected_metrics['logits/diff_2_to_3_std'] = np.std(diff_places[:, 1])  # type: ignore
+    expected_metrics['logits/choice_1_rank_mean'] = np.mean(ranks[:, 0])  # type: ignore
+    expected_metrics['logits/choice_2_rank_mean'] = np.mean(ranks[:, 1])  # type: ignore
+    expected_metrics['logits/choice_3_rank_mean'] = np.mean(ranks[:, 2])  # type: ignore
+    expected_metrics['logits/choice_1_rank_std'] = np.std(ranks[:, 0])  # type: ignore
+    expected_metrics['logits/choice_2_rank_std'] = np.std(ranks[:, 1])  # type: ignore
+    expected_metrics['logits/choice_3_rank_std'] = np.std(ranks[:, 2])  # type: ignore
+
+    expected_predictions = [
+        evaluation.serialize_prediction(
+            idx=0,
+            prediction=choices[preds[0]],
+            target=ds[0]['output'],
+            input_seq=ds[0]['prompt'],
+            choice_logits={choice: pred_scores[0][i] for i, choice in enumerate(choices)}
+        ),
+        evaluation.serialize_prediction(
+            idx=1,
+            prediction=choices[preds[1]],
+            target=ds[1]['output'],
+            input_seq=ds[1]['prompt'],
+            choice_logits={choice: pred_scores[1][i] for i, choice in enumerate(choices)}
+        ),
+    ]
+
+    metrics_path, preds_path = evaluation.evaluate(
+        predictions=predictions,
+        choices=choices,
+        source_dataset=ds,
+        tokenized_dataset=tokenized,
+        out_path=Path(tmpdir)
+    )
+
+    assert metrics_path.exists()
+    assert preds_path.exists()
+
+    actual_metrics = json.loads(metrics_path.read_text('utf-8'))
+    assert set(actual_metrics) == set(expected_metrics)
+    for k, expected in expected_metrics.items():
+        assert math.isclose(actual_metrics[k], expected), f"{k}: {actual_metrics[k]}!= {expected}"
+
+    predictions = list(map(json.loads, preds_path.read_text('utf-8').splitlines(False)))
+
+    assert predictions == expected_predictions

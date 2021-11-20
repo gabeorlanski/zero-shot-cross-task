@@ -1,15 +1,16 @@
 import logging
 from collections import defaultdict
 from typing import Tuple, Optional
-
-from src.prompt_map import PromptMapper
-from src.preprocessors import FixedChoiceTaskPreprocessor, TaskMode
+from promptsource.templates import Template
 from t5.data.preprocessors import rank_classification
 from datasets import Dataset
 import json
 import numpy as np
 import tensorflow as tf
+
 from src.common import all_equal
+from src.prompt_map import PromptMapper
+from src.preprocessors import FixedChoiceTaskPreprocessor, TaskMode
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def preprocess_dataset(
         task,
         dataset,
         tokenizer,
-        prompt,
+        prompt: Template,
         num_proc=4,
         batch_size=1,
         preprocessor: Optional[FixedChoiceTaskPreprocessor] = None,
@@ -57,8 +58,8 @@ def preprocess_dataset(
     # The scope of this project is only fixed choice tasks where the choice is
     # constant across all examples. Thus we check here to make sure that is the
     # case.
-    assert all_equal(ds_with_prompt['choices']), "Not fixed choice task."
-    choice_set = ds_with_prompt[0]['choices']
+    choice_set = prompt.get_fixed_answer_choices_list()
+    assert choice_set is not None, "Not fixed choice task."
     logger.info(f"Found choice set of [{', '.join(choice_set)}]")
     choice_set_tokenized = list(map(
         lambda c: tokenizer(c, add_special_tokens=False)['input_ids'],

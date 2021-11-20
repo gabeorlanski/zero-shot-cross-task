@@ -144,7 +144,7 @@ def single_experiment(
         length_normalize=cfg['evaluation'].get('length_normalization', False)
     )
     logger.info("Finished generating the dataset with the prompt.")
-    logger.info(f"Beginning evaluation of the predictions.")
+    logger.info(f"Evaluating predictions for {experiment_name}.")
     result_file = evaluate(
         experiment_name,
         predictions,

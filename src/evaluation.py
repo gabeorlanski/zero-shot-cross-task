@@ -1,14 +1,14 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from tqdm import tqdm
 import torch
 from t5.evaluation import metrics as mt
+from transformers import PreTrainedModel
 import json
 import numpy as np
-from src.common import all_equal
-import seqio
+from datasets import Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -64,24 +64,33 @@ def score_choice(logits, choice, length_normalize: bool = False):
 
 
 def generate_predictions_choices(
-        data_loader,
-        model,
-        device,
-        length_normalize=False,
-):
+        data_loader: torch.utils.data.DataLoader,
+        model: PreTrainedModel,
+        choices_tokenized: List[List[int]],
+        device: torch.device,
+        length_normalize: bool = False,
+) -> Dict[str, List]:
     """
-    Generate predictions when using answer choices.
+    Generate predictions when using answer choices. It WILL NOT handle batch
+    sizes of more than 1 for the time being.
 
     Args:
-        out_path (Path): Path to save to.
         data_loader (torch.utils.data.DataLoader): DataLoader to use.
-        model: Model to use.
-        tokenizer: Tokenizer to use.
-        device: device to use.
-        length_normalize: Use length normalization
+        choices_tokenized (List[List[int]]): The choices tokenized.
+        model (PreTrainedModel: Model to use.
+        device (torch.device): device to use.
+        length_normalize (bool): Use length normalization
 
     Returns:
-        Path where predictions were saved.
+        predictions (Dict[str, List]): Dict with two keys "targets" and
+            "scores". "targets" is a list of tuples with values:
+
+            `((example idx, choice idx), is the choice correct, weight)`
+
+            The list of "scores" is the log probability of the choice.
+
+            NOTE: The number of elements in both is the number of choices *
+            number of examples.
     """
     logger.info(f"Generating Choices")
     data_iterator = tqdm(data_loader, desc="Generating")
@@ -103,44 +112,25 @@ def generate_predictions_choices(
             predictions['scores'].extend(
                 score_choice(
                     generated.logits,
-                    batch['target'][0].tolist(),
+                    choices_tokenized[batch['choice_idx'][0].item()],
                     length_normalize=length_normalize
                 ).tolist()
             )
 
     data_iterator.close()
-    # pred_file.close()
     return predictions
 
 
-def evaluate(task, predictions, source_dataset, metrics, out_path):
-    """
-    Evaluate a prediction file based on given metrics.
-    Args:
-        task: Name of the task
-        prediction_path: Path to the predictions
-        metrics: Metrics to use
-        out_path: Where the results can be saved.
-
-    Returns:
-        Path to where the metrics.json was saved.
-    """
-    # Want to always have accuracy, so add it to the metrics if it is not
-    # already present.
-    if "Accuracy" not in metrics:
-        metrics.append("Accuracy")
-
-    logger.info(f"Evaluating predictions for {task}.")
-
+def evaluate(
+        predictions: Dict[str, List],
+        choices: List[str],
+        source_dataset: Dataset,
+        tokenized_dataset: Dataset,
+        out_path: Path
+):
     # This program is only made for fixed choice tasks. So we can assume all #
     # of choices will stay the same.
-    num_choices = len(source_dataset[0]['choices'])
-
-    final_metrics = mt.rank_classification(
-        predictions['targets'],
-        predictions['scores'],
-        num_classes=num_choices
-    )
+    num_choices = len(choices)
 
     aligned_preds = [[None] * num_choices for _ in range(len(source_dataset))]
     aligned_targets = [None] * len(source_dataset)
@@ -154,6 +144,15 @@ def evaluate(task, predictions, source_dataset, metrics, out_path):
             aligned_targets[idx] = choice_idx
         aligned_preds[idx][choice_idx] = score
 
+    aligned_preds = np.array(aligned_preds)
+    predicted_choice = aligned_preds.argmax(-1)
+
+    final_metrics = mt.rank_classification(
+        predictions['targets'],
+        predictions['scores'],
+        num_classes=num_choices
+    )
+
     f1_metrics = mt.sklearn_metrics_wrapper(
         "fbeta_score",
         metric_dict_str="f1_by_class",
@@ -162,15 +161,34 @@ def evaluate(task, predictions, source_dataset, metrics, out_path):
         labels=range(num_choices),
         average=None
     )(
-        np.array(aligned_preds).argmax(-1), np.array(aligned_targets)
+        predicted_choice, np.array(aligned_targets)
     )
 
     for l, f1 in enumerate(f1_metrics['f1_by_class']):
-        final_metrics[f"f1_choice_{l}"] = f1
-    input_lens = list(map(len, source_dataset['prompt']))
+        final_metrics[f"f1_choice_{l + 1}"] = f1
+    input_lens = tokenized_dataset['input_len']
     final_metrics['input_len/mean'] = np.mean(input_lens)  # type: ignore
-    final_metrics['input_len/median'] = np.median(input_lens)  # type: ignore
     final_metrics['input_len/std'] = np.std(input_lens)  # type: ignore
+
+    sorted_scores = np.sort(aligned_preds, axis=-1)
+    scores_ptp = np.abs(np.ptp(sorted_scores, -1))
+    diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
+    ranks = np.argsort(aligned_preds)
+
+    final_metrics['logits/range_mean'] = np.mean(scores_ptp)  # type: ignore
+    final_metrics['logits/range_std'] = np.std(scores_ptp)  # type: ignore
+
+    for i in range(len(choices)):
+        if i < len(choices) - 1:
+            diff_places_for_i = diff_places[:, i]
+            met_key = f'logits/diff_{i + 1}_to_{i + 2}'
+            final_metrics[f'{met_key}_mean'] = np.mean(diff_places_for_i)  # type: ignore
+            final_metrics[f'{met_key}_std'] = np.std(diff_places_for_i)  # type: ignore
+
+        ranks_of_choice_i = ranks[:, i]
+        met_key = f"logits/choice_{i + 1}_rank"
+        final_metrics[f'{met_key}_mean'] = np.mean(ranks_of_choice_i)  # type:ignore
+        final_metrics[f'{met_key}_std'] = np.std(ranks[:, 0])  # type: ignore
 
     for k, v in final_metrics.items():
         logger.info(f"{k:>20}: {v:.2f}")
@@ -179,7 +197,17 @@ def evaluate(task, predictions, source_dataset, metrics, out_path):
     with pred_file.open('w', encoding='utf-8') as pred_fp:
         for i, preds in enumerate(aligned_preds):
             ex = source_dataset[i]
-            raise NotImplementedError()
+            serialized = serialize_prediction(
+                idx=i,
+                prediction=choices[predicted_choice[i]],
+                target=ex['output'],
+                input_seq=ex['prompt'],
+                choice_logits={
+                    choice: logit
+                    for choice, logit in zip(choices, aligned_preds[i])
+                }
+            )
+            pred_fp.write(json.dumps(serialized) + '\n')
 
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")
