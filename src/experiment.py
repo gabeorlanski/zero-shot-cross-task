@@ -12,7 +12,7 @@ from transformers import T5ForConditionalGeneration, T5Model, AutoTokenizer
 from omegaconf import OmegaConf
 
 from src.evaluation import evaluate, generate_predictions_choices
-from src.tracking import create_run_cfg, save_run_to_wandb
+from src.tracking import create_run_cfg, save_run_to_wandb, get_metrics_for_wandb
 from src.common import sanitize_name
 from src.prompt_map import DEFAULT_PROMPT_GROUP
 from src.preprocessors import FixedChoiceTaskPreprocessor
@@ -96,17 +96,16 @@ def single_experiment(
     else:
         dataset = load_dataset(dataset_name, split=split)
 
-    tokenized, original, prompt = preprocess_dataset(
+    tokenized, original, choices_tokenized = preprocess_dataset(
         task=experiment_name,
         dataset=dataset,
         tokenizer=tokenizer,
         prompt=prompt,
         num_proc=cfg.get('num_proc', 1),
-        lowercase_choices=cfg['evaluation'].get('lowercase_choices', False),
         preprocessor=preprocessor
     )
 
-    choices = prompt.answer_choices
+    choices = prompt.get_fixed_answer_choices_list()
     logger.info(f"Choices found: {choices}")
     max_choices_found = max(map(len, original['choices']))
     min_choices_found = min(map(len, original['choices']))
@@ -141,16 +140,17 @@ def single_experiment(
         data_loader=data_loader,
         model=model,
         device=device,
+        choices_tokenized=choices_tokenized,
         length_normalize=cfg['evaluation'].get('length_normalization', False)
     )
     logger.info("Finished generating the dataset with the prompt.")
     logger.info(f"Evaluating predictions for {experiment_name}.")
-    result_file = evaluate(
-        experiment_name,
-        predictions,
+    evaluate(
+        predictions=predictions,
+        choices=choices,
         source_dataset=original,
-        metrics=prompt.metadata.metrics or ["Accuracy"],
-        out_path=results_path,
+        tokenized_dataset=tokenized,
+        out_path=results_path
     )
 
     return original, results_path
@@ -256,9 +256,16 @@ def run_experiments(
                 wandb_group_name += f".{cfg['group']['suffix']}"
 
             logger.info(f"Saving {prompt_fn} to wandb under group {wandb_group_name}")
+
+            metrics, df = get_metrics_for_wandb(
+                results_path.joinpath("metrics.json"), results_path.joinpath("predictions.jsonl"),
+                prompt.get_fixed_answer_choices_list()
+            )
             save_run_to_wandb(
                 run_name=prompt_fn,
                 run_cfg=run_cfg,
+                metrics=metrics,
+                pred_df=df,
                 tags=tags,
                 categories=categories,
                 group_name=wandb_group_name,

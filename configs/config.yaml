@@ -11,6 +11,7 @@ split: ???
 run_name: ???
 cuda_device: 0
 disable_caching: False
+prompt_count: null
 
 debug: False
 disable_tracking: False

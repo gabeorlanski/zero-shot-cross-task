@@ -19,7 +19,7 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             use_constant_domain: bool = False,
             is_mcq: bool = False
     ):
-        choices = choices or ["seller", "buyer", "neither", "unknown"]
+        choices = choices or ["Seller", "Buyer", "Neither", "Unknown"]
         assert len(choices) == 4
         super().__init__(
             choices=choices,

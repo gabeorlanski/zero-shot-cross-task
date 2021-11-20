@@ -38,7 +38,7 @@ def get_prompt_info_for_wandb(
 
     if choice_str is not None:
         has_fixed_choices = True
-        choice_str = ", ".join(sorted(choice_str))
+        choice_str = " | ".join(choice_str)
     else:
         has_fixed_choices = False
         choice_str = f"{choice_count} MCQ" if choice_count > 0 else "N/A"
@@ -99,16 +99,17 @@ def create_run_cfg(
 def get_metrics_for_wandb(metrics_path, predictions_path, choices):
     records = []
     metrics = json.loads(metrics_path.read_text('utf-8'))
-    for line in map(json.loads, predictions_path.read_text('utf-8').splitlines(False)):
+    for line in predictions_path.read_text('utf-8').splitlines(False):
         if not line:
             continue
-        line['correct'] = line['prediction'] == line['target']
+        line_record = json.loads(line)
+        line_record['correct'] = line_record['prediction'] == line_record['target']
 
         for choice, (choice_id, logit) in zip(choices,
-                                              line.pop('choice_logits').items()):
-            line[f"choice_{choice_id}"] = choice
-            line[f"choice_{choice_id}_logit"] = logit
-        records.append(line)
+                                              line_record.pop('choice_logits').items()):
+            line_record[f"choice_{choice_id}"] = choice
+            line_record[f"choice_{choice_id}_logit"] = logit
+        records.append(line_record)
     return metrics, pd.DataFrame.from_records(records).sort_values(
         by=['id']
     )
@@ -117,6 +118,8 @@ def get_metrics_for_wandb(metrics_path, predictions_path, choices):
 def save_run_to_wandb(
         run_name,
         run_cfg,
+        metrics,
+        pred_df,
         tags,
         categories,
         group_name,
@@ -137,12 +140,9 @@ def save_run_to_wandb(
 
     tags.extend(categories)
 
-    metrics, df = get_metrics_for_wandb(
-        metrics_path, predictions_path
-    )
-    pred_table = wandb.Table(dataframe=df)
+    pred_table = wandb.Table(dataframe=pred_df)
     wandb_run = wandb.init(
-        project="zero-shot-eval",
+        project=f"{'debug-' if is_debug else ''}zero-shot-eval",
         job_type="evaluation" if not is_debug else "debugging",
         entity="gabeorlanski",
         group=group_name,

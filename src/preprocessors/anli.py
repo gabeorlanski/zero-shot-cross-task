@@ -12,7 +12,7 @@ class ANLIPreprocessor(FixedChoiceTaskPreprocessor):
             choices=None,
             is_mcq: bool = False
     ):
-        choices = choices or ["yes", "no", "maybe"]
+        choices = choices or ["Yes", "No", "Maybe"]
         assert len(choices) == 3
         super().__init__(
             choices=choices,

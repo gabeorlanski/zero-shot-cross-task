@@ -173,7 +173,7 @@ def evaluate(
     sorted_scores = np.sort(aligned_preds, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(aligned_preds)
+    ranks = np.argsort(aligned_preds)+1
 
     final_metrics['logits/range_mean'] = np.mean(scores_ptp)  # type: ignore
     final_metrics['logits/range_std'] = np.std(scores_ptp)  # type: ignore
@@ -188,10 +188,10 @@ def evaluate(
         ranks_of_choice_i = ranks[:, i]
         met_key = f"logits/choice_{i + 1}_rank"
         final_metrics[f'{met_key}_mean'] = np.mean(ranks_of_choice_i)  # type:ignore
-        final_metrics[f'{met_key}_std'] = np.std(ranks[:, 0])  # type: ignore
+        final_metrics[f'{met_key}_std'] = np.std(ranks_of_choice_i)  # type: ignore
 
     for k, v in final_metrics.items():
-        logger.info(f"{k:>20}: {v:.2f}")
+        logger.info(f"{k:>32}: {v:.2f}")
 
     pred_file = out_path.joinpath('predictions.jsonl')
     with pred_file.open('w', encoding='utf-8') as pred_fp:
@@ -207,7 +207,7 @@ def evaluate(
                     for i, logit in enumerate(aligned_preds[i])
                 }
             )
-            pred_fp.write(json.dumps(serialized) + '\n')
+            pred_fp.write(serialized + '\n')
 
     metrics_file = out_path.joinpath("metrics.json")
     logger.info(f"Saving metrics to '{metrics_file}'")

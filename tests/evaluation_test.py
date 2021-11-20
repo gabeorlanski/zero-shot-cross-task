@@ -113,7 +113,7 @@ def test_evaluate(tmpdir):
     sorted_scores = np.sort(pred_scores, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(pred_scores)
+    ranks = np.argsort(pred_scores)+1
 
     expected_metrics = mt.rank_classification(
         predictions['targets'],
@@ -165,6 +165,7 @@ def test_evaluate(tmpdir):
             choice_logits={i: pred_scores[1][i] for i, choice in enumerate(choices)}
         ),
     ]
+    expected_predictions = list(map(json.loads,expected_predictions))
 
     metrics_path, preds_path = evaluation.evaluate(
         predictions=predictions,
@@ -184,4 +185,5 @@ def test_evaluate(tmpdir):
 
     predictions = list(map(json.loads, preds_path.read_text('utf-8').splitlines(False)))
 
-    assert predictions == expected_predictions
+    for actual, expected in zip(predictions,expected_predictions):
+        assert actual==expected
