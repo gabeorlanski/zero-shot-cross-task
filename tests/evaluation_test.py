@@ -20,7 +20,7 @@ from src.preprocessing import preprocess_dataset
                          ids=["W/Normalization", "No Normalization"])
 def test_generate_prediction_choices(prompt_name, length_normalized):
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
-    original_dataset = load_dataset("anli", split="train_r1[:2]")
+    original_dataset = load_dataset("anli", split="train_r1[:4]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
     model = T5ForConditionalGeneration.from_pretrained('t5-small').to('cpu')
     model.eval()
@@ -31,21 +31,6 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
         tokenizer,
         prompt,
         num_proc=1
-    )
-
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=1,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
-
-    data_loader = torch.utils.data.DataLoader(
-        tokenized,
-        batch_size=1,
-        collate_fn=collator,
-        shuffle=False
     )
 
     expected_targets = []
@@ -72,11 +57,36 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
             expected_scores.append(score)
 
     result = evaluation.generate_predictions_choices(
-        data_loader=data_loader,
+        tokenized.sort('choice_idx'),
+        batch_size=2,
+        tokenizer=tokenizer,
         choices_tokenized=choices_tokenized,
         model=model,
         device=torch.device('cpu'),
         length_normalize=length_normalized
+    )
+
+    # Some really hacky stuff to make sure the order is the exact same
+    result['scores'] = list(sorted(
+        list(enumerate(result['scores'])),
+        key=lambda x: len(choices_tokenized) * result['targets'][x[0]][0][0] +
+                         result['targets'][x[0]][0][1]
+    ))
+    expected_scores = list(sorted(
+        list(enumerate(expected_scores)),
+        key=lambda x: len(choices_tokenized) * expected_targets[x[0]][0][0] +
+                         expected_targets[x[0]][0][1]
+    ))
+    result['scores'] = list(map(lambda e: e[1], result['scores']))
+    expected_scores = list(map(lambda e: e[1], expected_scores))
+
+    result['targets'] = list(sorted(
+        result['targets'],
+        key=lambda ex: len(choices_tokenized) * ex[0][0] + ex[0][1])
+    )
+    expected_targets = list(sorted(
+        expected_targets,
+        key=lambda ex: len(choices_tokenized) * ex[0][0] + ex[0][1])
     )
 
     assert result['targets'] == expected_targets
@@ -113,7 +123,7 @@ def test_evaluate(tmpdir):
     sorted_scores = np.sort(pred_scores, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(-np.array(pred_scores))+1
+    ranks = np.argsort(-np.array(pred_scores)) + 1
 
     expected_metrics = mt.rank_classification(
         predictions['targets'],
@@ -165,7 +175,7 @@ def test_evaluate(tmpdir):
             choice_logits={i: pred_scores[1][i] for i, choice in enumerate(choices)}
         ),
     ]
-    expected_predictions = list(map(json.loads,expected_predictions))
+    expected_predictions = list(map(json.loads, expected_predictions))
 
     metrics_path, preds_path = evaluation.evaluate(
         predictions=predictions,
@@ -185,5 +195,5 @@ def test_evaluate(tmpdir):
 
     predictions = list(map(json.loads, preds_path.read_text('utf-8').splitlines(False)))
 
-    for actual, expected in zip(predictions,expected_predictions):
-        assert actual==expected
+    for actual, expected in zip(predictions, expected_predictions):
+        assert actual == expected

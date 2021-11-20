@@ -115,20 +115,7 @@ def single_experiment(
         logger.error("Variable number of choices found across examples. This is not supported.")
         raise ValueError("Variable number of choices found across examples. This is not supported.")
 
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        pad_to_multiple_of=1,
-        max_length=1024,
-        padding='longest',
-        label_pad_token_id=tokenizer.pad_token_id
-    )
 
-    data_loader = torch.utils.data.DataLoader(
-        tokenized,
-        batch_size=1,
-        collate_fn=collator,
-        shuffle=False
-    )
 
     logger.info(f"Max label length is {max(tokenized['labels_len'])}.")
     logger.info(f"Max Input length is {max(tokenized['input_len'])}.")
@@ -137,7 +124,9 @@ def single_experiment(
     device = torch.device(cfg['cuda_device'])
 
     predictions = generate_predictions_choices(
-        data_loader=data_loader,
+        dataset=tokenized.sort('choice_idx'),
+        batch_size=cfg['batch_size'],
+        tokenizer=tokenizer,
         model=model,
         device=device,
         choices_tokenized=choices_tokenized,

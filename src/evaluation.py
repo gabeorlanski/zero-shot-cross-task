@@ -5,7 +5,7 @@ from typing import Dict, Optional, List
 from tqdm import tqdm
 import torch
 from t5.evaluation import metrics as mt
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel, PreTrainedTokenizer, DataCollatorForSeq2Seq
 import json
 import numpy as np
 from datasets import Dataset
@@ -64,7 +64,9 @@ def score_choice(logits, choice, length_normalize: bool = False):
 
 
 def generate_predictions_choices(
-        data_loader: torch.utils.data.DataLoader,
+        dataset: Dataset,
+        batch_size: int,
+        tokenizer: PreTrainedTokenizer,
         model: PreTrainedModel,
         choices_tokenized: List[List[int]],
         device: torch.device,
@@ -93,31 +95,55 @@ def generate_predictions_choices(
             number of examples.
     """
     logger.info(f"Generating Choices")
-    data_iterator = tqdm(data_loader, desc="Generating")
+
+    original_dataset_size = len(dataset) // len(choices_tokenized)
+    logger.info(f"Original dataset size: {original_dataset_size}")
+    total_batch_count, rem = divmod(original_dataset_size, batch_size)
+    total_batch_count += rem > 0
+    total_batch_count *= len(choices_tokenized)
+
+    collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=1,
+        max_length=1024,
+        padding='longest',
+        label_pad_token_id=tokenizer.pad_token_id
+    )
+    loaders = []
+    for i in range(0, len(dataset), original_dataset_size):
+        sub_dataset = dataset.select(range(i, i + original_dataset_size))
+        data_loader = torch.utils.data.DataLoader(
+            sub_dataset,
+            batch_size=batch_size,
+            collate_fn=collator,
+            shuffle=False
+        )
+        loaders.append(data_loader)
+    progress_bar = tqdm(total=total_batch_count, desc="Generating")
 
     predictions = defaultdict(list)
     with torch.no_grad():
-        for batch in data_iterator:
-            if batch['idx'].shape[0] != 1:
-                raise ValueError('Only batch size 1 supported at the moment.')
+        for data_loader in loaders:
+            for batch in data_loader:
+                generated = model(
+                    input_ids=batch['input_ids'].to(device),
+                    attention_mask=batch['attention_mask'].to(device),
+                    labels=batch['labels'].to(device)
+                )
+                for idx, is_correct in zip(batch['idx'].tolist(), batch['is_correct'].tolist()):
+                    predictions['targets'].append(
+                        (idx, is_correct, 1.0)
+                    )
+                predictions['scores'].extend(
+                    score_choice(
+                        generated.logits,
+                        choices_tokenized[batch['choice_idx'][0].item()],
+                        length_normalize=length_normalize
+                    ).tolist()
+                )
+                progress_bar.update()
 
-            generated = model(
-                input_ids=batch['input_ids'].to(device),
-                attention_mask=batch['attention_mask'].to(device),
-                labels=batch['labels'].to(device)
-            )
-            predictions['targets'].append(
-                (batch['idx'][0].tolist(), batch['is_correct'][0].tolist(), 1.0)
-            )
-            predictions['scores'].extend(
-                score_choice(
-                    generated.logits,
-                    choices_tokenized[batch['choice_idx'][0].item()],
-                    length_normalize=length_normalize
-                ).tolist()
-            )
-
-    data_iterator.close()
+    progress_bar.close()
     return predictions
 
 
@@ -173,7 +199,7 @@ def evaluate(
     sorted_scores = np.sort(aligned_preds, axis=-1)
     scores_ptp = np.abs(np.ptp(sorted_scores, -1))
     diff_places = np.abs(sorted_scores[:, :-1] - sorted_scores[:, 1:])
-    ranks = np.argsort(-aligned_preds)+1
+    ranks = np.argsort(-aligned_preds) + 1
 
     final_metrics['logits/range_mean'] = np.mean(scores_ptp)  # type: ignore
     final_metrics['logits/range_std'] = np.std(scores_ptp)  # type: ignore
