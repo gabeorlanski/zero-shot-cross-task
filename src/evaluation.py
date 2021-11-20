@@ -88,24 +88,28 @@ def generate_single_choice(
         shuffle=False
     )
     progress_bar = tqdm(data_loader, desc="Generating")
-    for batch in progress_bar:
-        generated = model(
-            input_ids=batch['input_ids'].to(device),
-            attention_mask=batch['attention_mask'].to(device),
-            labels=batch['labels'].to(device)
-        )
-        for idx, is_correct in zip(batch['idx'].tolist(), batch['is_correct'].tolist()):
-            targets.append(
-                (idx, is_correct, 1.0)
+
+    with torch.no_grad():
+        for batch in progress_bar:
+            generated = model(
+                input_ids=batch['input_ids'].to(device),
+                attention_mask=batch['attention_mask'].to(device),
+                labels=batch['labels'].to(device)
             )
-        scores.extend(
-            score_choice(
-                generated.logits,
-                choice,
-                length_normalize=length_normalize
-            ).tolist()
-        )
+            for idx, is_correct in zip(batch['idx'].tolist(), batch['is_correct'].tolist()):
+                targets.append(
+                    (idx, is_correct, 1.0)
+                )
+
+            scores.extend(
+                score_choice(
+                    generated.logits.cpu().detach(),
+                    choice,
+                    length_normalize=length_normalize
+                ).tolist()
+            )
     progress_bar.close()
+    del data_loader
     return targets, scores
 
 
@@ -150,24 +154,22 @@ def generate_predictions_choices(
     sub_datasets = []
     for i in range(0, len(dataset), original_dataset_size):
         sub_dataset = dataset.select(range(i, i + original_dataset_size))
-        sub_datasets.append(sub_dataset.sort('input_len'))
+        sub_datasets.append(sub_dataset.sort('input_len', reverse=True))
 
     predictions = defaultdict(list)
-    with torch.no_grad():
-        for i, ds in enumerate(sub_datasets):
-            targets, scores = generate_single_choice(
-                ds,
-                model,
-                tokenizer,
-                length_normalize,
-                batch_size,
-                device,
-                choices_tokenized[i]
-            )
-            predictions['targets'].extend(targets)
-            predictions['scores'].extend(scores)
-
-        torch.cuda.empty_cache()
+    for i, ds in enumerate(sub_datasets):
+        targets, scores = generate_single_choice(
+            ds,
+            model,
+            tokenizer,
+            length_normalize,
+            batch_size,
+            device,
+            choices_tokenized[i]
+        )
+        predictions['targets'].extend(targets)
+        predictions['scores'].extend(scores)
+        # torch.cuda.empty_cache()
 
     return predictions
 

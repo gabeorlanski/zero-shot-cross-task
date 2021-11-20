@@ -20,9 +20,10 @@ from src.preprocessing import preprocess_dataset
                          ids=["W/Normalization", "No Normalization"])
 def test_generate_prediction_choices(prompt_name, length_normalized):
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
-    original_dataset = load_dataset("anli", split="train_r1[:4]")
+    original_dataset = load_dataset("anli", split="train_r1[:16]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
-    model = T5ForConditionalGeneration.from_pretrained('t5-small').to('cpu')
+    device = torch.device('cpu')
+    model = T5ForConditionalGeneration.from_pretrained('t5-small').to(device)
     model.eval()
 
     tokenized, ds, choices_tokenized = preprocess_dataset(
@@ -39,9 +40,9 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
     with torch.no_grad():
         for batch in tokenized.to_dict(batched=True, batch_size=1):
             model_output = model(
-                input_ids=torch.tensor(batch['input_ids'][0], device='cpu').unsqueeze(0),
-                attention_mask=torch.tensor(batch['attention_mask'][0], device='cpu').unsqueeze(0),
-                labels=torch.tensor(batch['labels'][0], device='cpu').unsqueeze(0)
+                input_ids=torch.tensor(batch['input_ids'][0], device=device).unsqueeze(0),
+                attention_mask=torch.tensor(batch['attention_mask'][0], device=device).unsqueeze(0),
+                labels=torch.tensor(batch['labels'][0], device=device).unsqueeze(0)
             )
 
             expected_targets.append(
@@ -62,7 +63,7 @@ def test_generate_prediction_choices(prompt_name, length_normalized):
         tokenizer=tokenizer,
         choices_tokenized=choices_tokenized,
         model=model,
-        device=torch.device('cpu'),
+        device=device,
         length_normalize=length_normalized
     )
 
