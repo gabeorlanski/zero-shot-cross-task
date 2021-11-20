@@ -203,8 +203,8 @@ def evaluate(
                 target=ex['output'],
                 input_seq=ex['prompt'],
                 choice_logits={
-                    choice: logit
-                    for choice, logit in zip(choices, aligned_preds[i])
+                    i: logit
+                    for i, logit in enumerate(aligned_preds[i])
                 }
             )
             pred_fp.write(json.dumps(serialized) + '\n')

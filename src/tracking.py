@@ -96,54 +96,22 @@ def create_run_cfg(
     return tags, run_cfg
 
 
-def get_metrics_for_wandb(metrics_path, predictions_path):
+def get_metrics_for_wandb(metrics_path, predictions_path, choices):
     records = []
     metrics = json.loads(metrics_path.read_text('utf-8'))
-    logit_keys = []
-    for line in predictions_path.read_text('utf-8').splitlines(False):
-        d = json.loads(line)
+    for line in map(json.loads, predictions_path.read_text('utf-8').splitlines(False)):
+        if not line:
+            continue
+        line['correct'] = line['prediction'] == line['target']
 
-        if len(d['prediction']) > 1:
-            pred, *others = d['prediction']
-        else:
-            pred = d['prediction'][0]
-            others = []
-
-        choice_logits = d.pop('choice_logits')
-        choices = d.pop('choices')
-        d['choice_count'] = len(choice_logits)
-
-        d['pred_id'] = None
-        d['target_id'] = None
-        d['correct'] = pred == d['target']
-        if choice_logits and choices:
-            for i, v in enumerate(choices):
-                d[f"choice_{i}"] = v
-                logit_key = f"c{i}_logit"
-                d[logit_key] = choice_logits[v] if choice_logits else None
-                if logit_key not in logit_keys:
-                    logit_keys.append(logit_key)
-
-                if v == pred:
-                    d['pred_id'] = i
-                if v == d['target']:
-                    d['target_id'] = i
-
-        d['prediction'] = pred
-        d['other_beams'] = others
-        records.append(d)
-
-    out_df = pd.DataFrame.from_records(records).sort_values(
+        for choice, (choice_id, logit) in zip(choices,
+                                              line.pop('choice_logits').items()):
+            line[f"choice_{choice_id}"] = choice
+            line[f"choice_{choice_id}_logit"] = logit
+        records.append(line)
+    return metrics, pd.DataFrame.from_records(records).sort_values(
         by=['id']
     )
-    if logit_keys:
-        logits = out_df[logit_keys]
-        logit_metrics = logits.agg(['mean', 'median', 'std'])
-        for col, values in logit_metrics.to_dict().items():
-            for metric, value in values.items():
-                metrics[f"logits/{col}_{metric}"] = value
-
-    return metrics, out_df
 
 
 def save_run_to_wandb(

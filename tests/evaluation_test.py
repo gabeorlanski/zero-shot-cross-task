@@ -155,14 +155,14 @@ def test_evaluate(tmpdir):
             prediction=choices[preds[0]],
             target=ds[0]['output'],
             input_seq=ds[0]['prompt'],
-            choice_logits={choice: pred_scores[0][i] for i, choice in enumerate(choices)}
+            choice_logits={i: pred_scores[0][i] for i, choice in enumerate(choices)}
         ),
         evaluation.serialize_prediction(
             idx=1,
             prediction=choices[preds[1]],
             target=ds[1]['output'],
             input_seq=ds[1]['prompt'],
-            choice_logits={choice: pred_scores[1][i] for i, choice in enumerate(choices)}
+            choice_logits={i: pred_scores[1][i] for i, choice in enumerate(choices)}
         ),
     ]
 
