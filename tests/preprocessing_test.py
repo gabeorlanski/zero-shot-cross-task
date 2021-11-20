@@ -115,19 +115,24 @@ def test_tokenize_rank_choices():
     }
 
     inputs_tok = tokenizer(ex['inputs'].decode('utf-8'))
-    targets_tok = tokenizer(ex['targets'].decode('utf-8'))
+    targets_tok = tokenizer(
+        ex['targets'].decode('utf-8'),
+        max_length=4,
+        padding="max_length"
+    )
 
-    result = preprocessing.tokenize_rank_choices(ex, tokenizer)
+    result = preprocessing.tokenize_rank_choices(ex, tokenizer, 4)
 
     assert set(result) == {"idx", "input_ids", "attention_mask", "labels", "is_correct",
-                           "input_len", "labels_len", "ex_idx", "choice_idx"}
+                           "input_len", "labels_len", "ex_idx", "choice_idx",
+                           "labels_attention_mask"}
 
     assert result['idx'] == [0, 1]
     assert result['ex_idx'] == 0
-    assert result['choic_idx'] == 1
+    assert result['choice_idx'] == 1
     assert result['is_correct'] == True
     assert result['labels'] == targets_tok['input_ids']
     assert result['input_ids'] == inputs_tok['input_ids']
     assert result['attention_mask'] == inputs_tok['attention_mask']
     assert result['input_len'] == len(inputs_tok['input_ids'])
-    assert result['labels_len'] == len(targets_tok['input_ids'])
+    assert result['labels_len'] == sum(targets_tok['attention_mask'])

@@ -107,9 +107,9 @@ def generate_predictions_choices(
         collate_fn=collator,
         shuffle=False
     )
-
+    batch_size = 1
     targets = []
-    scores = []
+    dataset_scores = []
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Generating"):
             generated = model(
@@ -117,20 +117,35 @@ def generate_predictions_choices(
                 attention_mask=batch['attention_mask'].to(device),
                 labels=batch['labels'].to(device)
             )
+
             targets.append(
                 (batch['idx'][0].tolist(), batch['is_correct'][0].tolist(), 1.0)
             )
 
-            scores.extend(
-                score_choice(
-                    generated.logits.cpu().detach(),
-                    choices_tokenized[batch['idx'][0][1].item()],
-                    length_normalize=length_normalize
-                ).tolist()
-            )
+            choice_mask = batch['labels_attention_mask']
+            choice_mask[torch.arange(batch_size), batch['labels_len'] - 1] = 0
+            logits = generated.logits.cpu().detach()
+            choice_logits = logits[
+                                torch.arange(logits.shape[0]).unsqueeze(-1),
+                                torch.arange(logits.shape[1]),
+                                batch['labels']
+                            ] * choice_mask
+
+            scores = choice_logits.sum(-1)
+            if length_normalize:
+                scores /= choice_mask.sum(-1)
+            dataset_scores.extend(scores.tolist())
+
+            # scores.extend(
+            #     score_choice(
+            #         generated.logits.cpu().detach(),
+            #         choices_tokenized[batch['idx'][0][1].item()],
+            #         length_normalize=length_normalize
+            #     ).tolist()
+            # )
     torch.cuda.empty_cache()
 
-    return {'targets': targets, "scores": scores}
+    return {'targets': targets, "scores": dataset_scores}
 
 
 def evaluate(

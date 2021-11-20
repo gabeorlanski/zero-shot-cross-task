@@ -88,7 +88,7 @@ def preprocess_dataset(
             dataset_records[k].append(v)
 
     final_dataset = Dataset.from_dict(dataset_records).map(
-        lambda ex: tokenize_rank_choices(ex, tokenizer),
+        lambda ex: tokenize_rank_choices(ex, tokenizer, max(map(len, choice_set_tokenized))),
         num_proc=num_proc,
         remove_columns=list(dataset_records)
     ).sort('input_len', reverse=True)
@@ -98,23 +98,25 @@ def preprocess_dataset(
 def tokenize_rank_choices(
         ex,
         tokenizer,
-        is_string_input=False
+        max_choice_len,
+        is_string_input=False,
 ):
     inputs_tokenized = tokenizer(
         ex['inputs'].decode('utf-8') if not is_string_input else ex['inputs'],
         max_length=1024, truncation=True)
     labels_tokenized = tokenizer(
         ex['targets'].decode('utf-8') if not is_string_input else ex['targets'],
-        max_length=256,
-        truncation=True
-    )['input_ids']
+        max_length=max_choice_len + 1,
+        padding="max_length"
+    )
     return {
-        "idx"       : ex['idx'],
-        "ex_idx"    : ex['idx'][0],
-        "choice_idx": ex['idx'][1],
-        "is_correct": ex['is_correct'],
-        "labels"    : labels_tokenized,
-        "labels_len": len(labels_tokenized),
-        "input_len" : len(inputs_tokenized['input_ids']),
+        "idx"                 : ex['idx'],
+        "ex_idx"              : ex['idx'][0],
+        "choice_idx"          : ex['idx'][1],
+        "is_correct"          : ex['is_correct'],
+        "labels"              : labels_tokenized['input_ids'],
+        "labels_attention_mask": labels_tokenized['attention_mask'],
+        "labels_len"          : sum(labels_tokenized['attention_mask']),
+        "input_len"           : len(inputs_tokenized['input_ids']),
         **inputs_tokenized
     }
