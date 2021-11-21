@@ -126,8 +126,8 @@ def single_experiment(
         tokenizer=tokenizer,
         model=model,
         device=device,
-        choices_tokenized=choices_tokenized,
-        length_normalize=cfg['evaluation'].get('length_normalization', False)
+        length_normalize=cfg['evaluation'].get('length_normalization', False),
+        batch_size=cfg['batch_size']
     )
     logger.info("Finished generating the dataset with the prompt.")
     logger.info(f"Evaluating predictions for {experiment_name}.")
