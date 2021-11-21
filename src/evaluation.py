@@ -118,14 +118,14 @@ def generate_predictions_choices(
                 attention_mask=batch['attention_mask'].to(device),
                 labels=batch['labels'].to(device)
             )
-
-            targets.append(
-                (batch['idx'][0].tolist(), batch['is_correct'][0].tolist(), 1.0)
-            )
+            logits = generated.logits.cpu().detach()
+            for i in range(logits.shape[0]):
+                targets.append(
+                    (batch['idx'][i].tolist(), batch['is_correct'][i].tolist(), 1.0)
+                )
 
             choice_mask = batch['labels_attention_mask']
             choice_mask[torch.arange(batch_size), batch['labels_len'] - 1] = 0
-            logits = generated.logits.cpu().detach()
             choice_logits = logits[
                                 torch.arange(logits.shape[0]).unsqueeze(-1),
                                 torch.arange(logits.shape[1]),
