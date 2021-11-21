@@ -10,6 +10,8 @@ import json
 import numpy as np
 from datasets import Dataset
 
+import torch.nn.functional as F
+
 logger = logging.getLogger(__name__)
 
 # Dictionary for storing metrics so that we can easily get them from the
@@ -101,13 +103,14 @@ def generate_predictions_choices(
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
     )
+
+    batch_size = 4
     data_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=1,
+        batch_size=batch_size,
         collate_fn=collator,
         shuffle=False
     )
-    batch_size = 1
     targets = []
     dataset_scores = []
     with torch.no_grad():
@@ -117,32 +120,37 @@ def generate_predictions_choices(
                 attention_mask=batch['attention_mask'].to(device),
                 labels=batch['labels'].to(device)
             )
+            logits = generated.logits.cpu().detach()
 
-            targets.append(
-                (batch['idx'][0].tolist(), batch['is_correct'][0].tolist(), 1.0)
-            )
+            for i in range(logits.shape[0]):
+                targets.append(
+                    (batch['idx'][i].tolist(), batch['is_correct'][i].tolist(), 1.0)
+                )
 
             choice_mask = batch['labels_attention_mask']
-            choice_mask[torch.arange(batch_size), batch['labels_len'] - 1] = 0
-            logits = generated.logits.cpu().detach()
-            choice_logits = logits[
-                                torch.arange(logits.shape[0]).unsqueeze(-1),
-                                torch.arange(logits.shape[1]),
-                                batch['labels']
-                            ] * choice_mask
+            choice_mask[torch.arange(logits.shape[0]), batch['labels_len'] - 1] = 0
+            cross_entropy_scores = F.cross_entropy(
+                logits.reshape(-1, logits.shape[-1]),
+                batch['labels'].contiguous().view(-1),
+                reduction='none'
+            ).reshape(logits.shape[0], -1)
 
-            scores = choice_logits.sum(-1)
-            if length_normalize:
-                scores /= choice_mask.sum(-1)
-            dataset_scores.extend(scores.tolist())
+            cross_entropy_scores = -(cross_entropy_scores*choice_mask).sum(-1)
 
-            # scores.extend(
-            #     score_choice(
-            #         generated.logits.cpu().detach(),
-            #         choices_tokenized[batch['idx'][0][1].item()],
-            #         length_normalize=length_normalize
-            #     ).tolist()
-            # )
+            # choice_logits = logits[
+            #                     torch.arange(logits.shape[0]).unsqueeze(-1),
+            #                     torch.arange(logits.shape[1]),
+            #                     batch['labels']
+            #                 ] * choice_mask
+            #
+            # scores = choice_logits.sum(-1)
+            # if length_normalize:
+            #     scores /= choice_mask.sum(-1)
+            # dataset_scores.extend(scores.tolist())
+
+            dataset_scores.extend(
+                cross_entropy_scores.tolist()
+            )
     torch.cuda.empty_cache()
 
     return {'targets': targets, "scores": dataset_scores}
