@@ -5,4 +5,5 @@ python experiment.py +run_name="CrossTask" task=craigslist_bargains +split=valid
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+  evaluation.length_normalization=True \
+  batch_size=1

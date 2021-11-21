@@ -112,6 +112,7 @@ def generate_predictions_choices(
     targets = []
     dataset_scores = []
     with torch.no_grad():
+        batch_num = 0
         for batch in tqdm(data_loader, desc="Generating"):
             generated = model(
                 input_ids=batch['input_ids'].to(device),
@@ -137,14 +138,8 @@ def generate_predictions_choices(
                 scores /= choice_mask.sum(-1)
             dataset_scores.extend(scores.tolist())
 
-            # scores.extend(
-            #     score_choice(
-            #         generated.logits.cpu().detach(),
-            #         choices_tokenized[batch['idx'][0][1].item()],
-            #         length_normalize=length_normalize
-            #     ).tolist()
-            # )
-    torch.cuda.empty_cache()
+            if (batch_num+1) % 10 == 0:
+                torch.cuda.empty_cache()
 
     return {'targets': targets, "scores": dataset_scores}
 
