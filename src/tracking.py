@@ -30,7 +30,9 @@ def get_prompt_info_for_wandb(
         "prompt_id"           : prompt.id,
         "prompt_category"     : prompt_metadata.get("category", None),
         "prompt_group"        : prompt_group,
-        "prompt_group_long"   : prompt_group_cfg.get('name', "Promptsource Prompts")
+        "prompt_group_long"   : prompt_group_cfg.get('name', "Promptsource Prompts"),
+        "is_mcq"              : prompt_metadata.get("is_mcq", None),
+        "task_mode"           : prompt_metadata.get("task_mode", None),
     }
 
     choice_str = prompt.get_fixed_answer_choices_list()

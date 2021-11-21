@@ -282,7 +282,7 @@ def load_generalized_prompts(
                 "original_task": prompt.metadata.original_task == task_name,
                 "prompt_task"  : prompt.metadata.original_task,
                 "is_mcq"       : prompt.metadata.is_mcq,
-                "task_mode"    : prompt.metadata.task_mode
+                "task_mode"    : str(prompt.metadata.task_mode)
             }
         ))
 
