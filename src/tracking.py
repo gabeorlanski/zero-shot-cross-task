@@ -14,52 +14,39 @@ from src.common import sanitize_name
 
 
 def get_prompt_info_for_wandb(
+        task_name: str,
         prompt_group: str,
         prompt: Template,
         prompt_metadata: Dict,
-        is_general_prompt: bool,
-        prompt_group_cfg: Dict
 ) -> Tuple[List, Dict]:
     prompt_cfg = {
         "choices_in_prompt"   : prompt.metadata.choices_in_prompt or False,
-        "original_task"       : prompt.metadata.original_task,
+        "original_task"       : prompt_metadata.get("original_task", prompt.metadata.original_task),
         "has_choices"         : prompt.answer_choices is not None,
         "prompt_name"         : prompt_metadata['name'],
-        "is_general_prompt"   : is_general_prompt,
         "original_prompt_name": prompt.name,
         "prompt_id"           : prompt.id,
         "prompt_category"     : prompt_metadata.get("category", None),
         "prompt_group"        : prompt_group,
-        "prompt_group_long"   : prompt_group_cfg.get('name', "Promptsource Prompts"),
         "is_mcq"              : prompt_metadata.get("is_mcq", None),
         "task_mode"           : prompt_metadata.get("task_mode", None),
     }
 
-    choice_str = prompt.get_fixed_answer_choices_list()
-    choice_count = prompt_group_cfg.get('choice_count', prompt_metadata.get('choice_count', 0))
+    choices = prompt.get_fixed_answer_choices_list()
+    choice_count = len(choices if choices else 0)
 
-    if choice_str is not None:
-        has_fixed_choices = True
-        choice_str = " | ".join(choice_str)
+    if choices is not None:
+        choice_str = " | ".join(choices)
     else:
-        has_fixed_choices = False
-        choice_str = f"{choice_count} MCQ" if choice_count > 0 else "N/A"
+        choice_str = "N/A"
 
     prompt_cfg["choices"] = choice_str
     prompt_cfg["choice_count"] = choice_count
-    prompt_cfg["has_fixed_choices"] = has_fixed_choices
-
-    original_choices = prompt_metadata.get("original_choices", prompt.answer_choices)
-    prompt_cfg['uses_original_choices'] = prompt.answer_choices == original_choices
-    prompt_cfg['original_choices'] = original_choices
-    prompt_cfg['original_task'] = False if isinstance(prompt_metadata['original_task'], List) else \
-        prompt_metadata['original_task']
-    prompt_cfg['prompt_task'] = prompt_metadata.get('prompt_task', prompt_metadata['original_task'])
+    prompt_cfg['prompt_task'] = prompt_metadata['prompt_task']
 
     tags = [
         f"PromptCat:{prompt_cfg['prompt_category']}",
-        prompt_cfg['prompt_group'],
-        "Generalized Prompt" if is_general_prompt else "Task Specific Prompt"
+        prompt_cfg['prompt_group']
     ]
     return tags, prompt_cfg
 
@@ -79,19 +66,11 @@ def create_run_cfg(
         **flatten(cfg_dict, sep='.')
     }
 
-    is_general_prompt = cfg.get("use_general_prompts", False)
-
-    if is_general_prompt:
-        prompt_group_cfg = cfg['task']['general_prompts']
-    else:
-        prompt_group_cfg = {}
-
     tags, prompt_cfg = get_prompt_info_for_wandb(
+        task_name=cfg['task']['name'],
         prompt_group=prompt_group,
         prompt=prompt,
-        prompt_metadata=prompt_metadata,
-        is_general_prompt=is_general_prompt,
-        prompt_group_cfg=prompt_group_cfg
+        prompt_metadata=prompt_metadata
     )
 
     run_cfg.update(prompt_cfg)

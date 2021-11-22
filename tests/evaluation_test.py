@@ -62,7 +62,6 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
     result = evaluation.generate_predictions_choices(
         tokenized.sort('choice_idx'),
         tokenizer=tokenizer,
-        choices_tokenized=choices_tokenized,
         model=model,
         device=device,
         length_normalize=length_normalized

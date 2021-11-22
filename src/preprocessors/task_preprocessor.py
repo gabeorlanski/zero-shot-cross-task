@@ -2,6 +2,7 @@ from typing import List, Dict
 from copy import deepcopy
 from src.common.registrable import Registrable
 from enum import Enum, auto
+import string
 
 
 # Different tasks require different column. So in order to have the preprocessor
@@ -22,6 +23,16 @@ class FixedChoiceTaskPreprocessor(Registrable):
             is_mcq: bool = False
     ):
         self.choices = choices
+
+        if choice_str is None:
+            choice_str = ', '.join(f'"{c}"' for c in choices[:-1])
+            choice_str += f' or "{choices[-1]}"'
+
+        if not mcq_choice_str:
+            mcq_choice_str = '\n'.join(f'{letter}) {choice}'
+                                       for letter, choice in zip(string.ascii_lowercase, choices))
+            mcq_choice_str += '\n'
+
         self.choice_string = choice_str
         self.mcq_choice_string = mcq_choice_str
         self.is_mcq = is_mcq

@@ -9,3 +9,6 @@ category:
 
 preprocessor:
   name: "anli"
+  choices: null
+  choice_str: '"yes", "no", or "maybe"'
+  mcq_choice_str: 'a) yes\nb) no\nc) maybe'

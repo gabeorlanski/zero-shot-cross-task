@@ -7,8 +7,8 @@ category:
 
 preprocessor:
   name: "craigslist"
-  choices: null
   add_speaker_prefix: false
+  choices: null
 
 
 splits:

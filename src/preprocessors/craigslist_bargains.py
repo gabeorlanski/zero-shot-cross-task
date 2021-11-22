@@ -17,15 +17,18 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             background_info_str: str = "The buyer wanted ${:.2f}, the seller wanted "
                                        "${:.2f}, and the final price is ${:.2f}",
             use_constant_domain: bool = False,
-            is_mcq: bool = False
+            is_mcq: bool = False,
+            choice_str: str = None,
+            mcq_choice_str:str=None
     ):
-        choices = choices or ["Seller", "Buyer", "Neither", "Unknown"]
+        if choices is None:
+            choices = ["Seller", "Buyer", "Neither", "Unknown"]
         assert len(choices) == 4
+
         super().__init__(
             choices=choices,
-            choice_str='"the seller", "the buyer", "neither", or "unknown"',
-            mcq_choice_str=f'a) the seller\nb) the buyer\nc) neither - it is a'
-                           ' fair compromise\nd) unknown',
+            choice_str=choice_str,
+            mcq_choice_str=mcq_choice_str,
             is_mcq=is_mcq
         )
         self.add_speaker_prefix = add_speaker_prefix

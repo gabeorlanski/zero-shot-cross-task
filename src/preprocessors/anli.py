@@ -10,14 +10,18 @@ class ANLIPreprocessor(FixedChoiceTaskPreprocessor):
     def __init__(
             self,
             choices=None,
-            is_mcq: bool = False
+            is_mcq: bool = False,
+            choice_str: str = None,
+            mcq_choice_str: str = None
     ):
-        choices = choices or ["Yes", "No", "Maybe"]
+        if choices is None:
+            choices = ["Yes", "No", "Maybe"]
         assert len(choices) == 3
+
         super().__init__(
             choices=choices,
-            choice_str='"yes", "no", or "maybe"',
-            mcq_choice_str=f'a) yes\nb) no\nc) maybe',
+            choice_str=choice_str,
+            mcq_choice_str=mcq_choice_str,
             is_mcq=is_mcq
         )
 
