@@ -112,13 +112,6 @@ def save_run_to_wandb(
     assert metrics_path.exists()
     assert predictions_path.exists()
 
-    if run_cfg['has_fixed_choices']:
-        tags.append("Fixed Choices")
-    elif run_cfg['choice_count'] > 0:
-        tags.append("MCQ")
-    else:
-        tags.append("Generation")
-
     tags.extend(categories)
 
     pred_table = wandb.Table(dataframe=pred_df)
