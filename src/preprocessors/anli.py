@@ -15,7 +15,7 @@ class ANLIPreprocessor(FixedChoiceTaskPreprocessor):
             mcq_choice_str: str = None
     ):
         if choices is None:
-            choices = ["Yes", "No", "Maybe"]
+            choices = ["Yes", "Maybe", "No"]
         assert len(choices) == 3
 
         super().__init__(

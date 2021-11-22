@@ -179,8 +179,10 @@ def evaluate(
     # By default, rank classification returns mean_{num_classes}_f1. Easier to
     # handle across tasks if we rename it to F1. In the case of 2 choices, it
     # is only called F1 so no change.
-    final_metrics['f1'] = final_metrics.pop(f"mean_{num_choices}class_f1")
-
+    try:
+        final_metrics['f1'] = final_metrics.pop(f"mean_{num_choices}class_f1")
+    except KeyError:
+        assert 'f1' in final_metrics
     f1_metrics = mt.sklearn_metrics_wrapper(
         "fbeta_score",
         metric_dict_str="f1_by_class",
