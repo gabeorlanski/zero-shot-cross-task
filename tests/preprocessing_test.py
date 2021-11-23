@@ -89,7 +89,7 @@ def test_preprocess_dataset(use_preprocessor):
         expected_rank_choices
     )
     expected_rank_choices = expected_rank_choices.map(
-        lambda ex: preprocessing.tokenize_rank_choices(ex, tokenizer, True),
+        lambda ex: preprocessing.tokenize_rank_choices(ex, tokenizer, 1, True),
         remove_columns=expected_rank_choices.column_names
     ).map(
         lambda ex: {'real_idx': 3 * ex['ex_idx'] + ex['choice_idx']}
@@ -117,7 +117,7 @@ def test_tokenize_rank_choices():
     inputs_tok = tokenizer(ex['inputs'].decode('utf-8'))
     targets_tok = tokenizer(
         ex['targets'].decode('utf-8'),
-        max_length=4,
+        max_length=5,
         padding="max_length"
     )
 

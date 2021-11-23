@@ -13,13 +13,14 @@ from promptsource.templates import DatasetTemplates
 @pytest.mark.parametrize("existing_dir", ["A", "Prompt"], ids=["No Conflict", "Conflict"])
 @pytest.mark.parametrize("subset", [None, "cb"], ids=["No Subset", "Subset"])
 def test_single_experiment(tmpdir, force, existing_dir, subset):
+    set_caching_enabled(False)
     tmpdir_path = Path(tmpdir)
 
     cfg = OmegaConf.create({
         "task"       : "Test",
         "model_name" : "Test",
         "force"      : force,
-        "batch_size" : 8,
+        "batch_size" : 1,
         "beams"      : 4,
         "evaluation" : {
             "force_generation"    : False,
@@ -35,7 +36,6 @@ def test_single_experiment(tmpdir, force, existing_dir, subset):
 
     prompt = DatasetTemplates('anli')["does it follow that"]
     tokenizer = AutoTokenizer.from_pretrained('t5-small')
-    set_caching_enabled(False)
 
     tmpdir_path.joinpath(existing_dir).mkdir(parents=True)
 

@@ -38,8 +38,8 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
         num_proc=1
     )
 
-    expected_targets = []
-    expected_scores = []
+    expected_targets = {}
+    expected_scores = {}
 
     with torch.no_grad():
         for batch in tokenized.to_dict(batched=True, batch_size=1):
@@ -49,14 +49,18 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
                 labels=torch.tensor(batch['labels'][0], device=device).unsqueeze(0)
             )
 
-            expected_targets.append(
+            item_key = f"{batch['idx'][0][0]}|{batch['idx'][0][1]}"
+
+            expected_targets[item_key] = (
                 (batch['idx'][0], batch['is_correct'][0], 1.0)
             )
             choice_idx = batch['choice_idx'][0]
-            logits = model_output.logits
-            expected_scores.append(
-                sum(logits[0, i, j] for i in range(logits.shape[1]) for j in choices_tokenized[choice_idx]).item()
-                / (1 if not length_normalized else len(choices_tokenized[choice_idx]))
+            logits = model_output.logits[0]
+            score = 0
+            for i, t in enumerate(choices_tokenized[choice_idx]):
+                score += logits[i, t].item()
+            expected_scores[item_key] = score / (
+                1 if not length_normalized else len(choices_tokenized[choice_idx])
             )
 
     result = evaluation.generate_predictions_choices(
@@ -67,31 +71,24 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
         length_normalize=length_normalized
     )
 
-    # Some really hacky stuff to make sure the order is the exact same
-    result['scores'] = list(sorted(
-        list(enumerate(result['scores'])),
-        key=lambda x: len(choices_tokenized) * result['targets'][x[0]][0][0] +
-                      result['targets'][x[0]][0][1]
-    ))
-    expected_scores = list(sorted(
-        list(enumerate(expected_scores)),
-        key=lambda x: len(choices_tokenized) * expected_targets[x[0]][0][0] +
-                      expected_targets[x[0]][0][1]
-    ))
-    result['scores'] = list(map(lambda e: e[1], result['scores']))
-    expected_scores = list(map(lambda e: e[1], expected_scores))
+    assert len(result['targets']) == len(expected_targets)
+    assert len(result['scores']) == len(expected_scores)
 
-    result['targets'] = list(sorted(
-        result['targets'],
-        key=lambda ex: len(choices_tokenized) * ex[0][0] + ex[0][1])
-    )
-    expected_targets = list(sorted(
-        expected_targets,
-        key=lambda ex: len(choices_tokenized) * ex[0][0] + ex[0][1])
-    )
+    for i, (target, score) in enumerate(zip(result['targets'], result['scores'])):
+        idx_pair, _, _ = target
+        item_key = f"{idx_pair[0]}|{idx_pair[1]}"
+        assert item_key in expected_targets, f"{i} missing {item_key}"
+        assert item_key in expected_scores, f"{i} missing {item_key}"
+        expected_target = expected_targets.pop(item_key)
+        expected_score = expected_scores.pop(item_key)
 
-    assert result['targets'] == expected_targets
-    assert np.allclose(result['scores'], expected_scores)
+        assert target == expected_target, f"{i}:{item_key} does not have correct target"
+        assert math.isclose(
+            score, expected_score, rel_tol=1e-6
+        ), f"{i}:{item_key} does not have correct score"
+
+    assert set(expected_targets) == set()
+    assert set(expected_scores) == set()
 
 
 def test_evaluate(tmpdir):
@@ -142,6 +139,8 @@ def test_evaluate(tmpdir):
     f1_metrics = f1_fn(
         preds, np.array(targets)
     )
+    expected_metrics['f1'] = expected_metrics.pop('mean_3class_f1')
+
     expected_metrics["f1_choice_1"] = f1_metrics['f1_by_class'][0]
     expected_metrics["f1_choice_2"] = f1_metrics['f1_by_class'][1]
     expected_metrics["f1_choice_3"] = f1_metrics['f1_by_class'][2]

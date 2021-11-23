@@ -31,7 +31,7 @@ class TestCraigslistBargainsPreprocessor:
         expected_columns = {
             "idx",
             "label",
-            "additional_inputs",
+            "additional_input_1",
             "choices",
             "domain",
             "listing_price",
@@ -108,7 +108,7 @@ class TestCraigslistBargainsPreprocessor:
             )
             expected_label = processor.label_to_int[label]
             assert result['label'] == expected_label
-            assert result['additional_inputs'] == [expected['items']['Price'][0]]
+            assert result['additional_input_1'] == expected['items']['Price'][0]
 
     @pytest.mark.parametrize("dialogue_acts,targets,expected", [
         [[["", "", ""], [-1.0, 10, -1.0]], [1369.0, 2283.0], "UNKNOWN"],
