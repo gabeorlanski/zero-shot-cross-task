@@ -1,62 +1,62 @@
 #!/bin/bash
 # Run the experiments
-python experiment.py +run_name="T0LenNorm" task=cb +split=validation \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r1 \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r2 \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r3 \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+#python experiment.py +run_name="T0LenNorm" task=cb +split=validation \
+#  model_name="bigscience/T0_3B" \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r1 \
+#  model_name="bigscience/T0_3B" \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r2 \
+#  model_name="bigscience/T0_3B" \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T0LenNorm" task=anli +split=dev_r3 \
+#  model_name="bigscience/T0_3B" \
+#  evaluation.length_normalization=True
 python experiment.py +run_name="T0LenNorm" task=rte +split=validation \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization = True
+  evaluation.length_normalization=True
 python experiment.py +run_name="T0LenNorm" task=wsc +split=validation \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization = True
+  evaluation.length_normalization=True
 python experiment.py +run_name="T0LenNorm" task="wsc_fixed" +split=validation \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization = True
+  evaluation.length_normalization=True
 python experiment.py +run_name="T0LenNorm" task=wic +split=validation \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization = True
+  evaluation.length_normalization=True
 
-python experiment.py +run_name="T5LenNorm" task=cb +split=validation \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r1 \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r2 \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r3 \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=rte +split=validation \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=wsc +split=validation \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task="wsc_fixed" +split=validation \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
-python experiment.py +run_name="T5LenNorm" task=wic +split=validation \
-  model_name="t5-3b" \
-  batch_size=1 \
-  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=cb +split=validation \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r1 \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r2 \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=anli +split=dev_r3 \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=rte +split=validation \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=wsc +split=validation \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task="wsc_fixed" +split=validation \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
+#python experiment.py +run_name="T5LenNorm" task=wic +split=validation \
+#  model_name="t5-3b" \
+#  batch_size=1 \
+#  evaluation.length_normalization=True
 
 
 #python experiment.py +run_name="CTBase" task=anli +split=dev_r1 \
