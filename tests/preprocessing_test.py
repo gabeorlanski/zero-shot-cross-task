@@ -4,7 +4,7 @@ import pytest
 from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
 from datasets import load_dataset, set_caching_enabled, Dataset
 from promptsource.templates import DatasetTemplates
-from src.preprocessors import ANLIPreprocessor, TaskMode
+from src.preprocessors import TwoChoiceEntailmentPreprocessor, TaskMode
 
 from src import preprocessing
 
@@ -22,7 +22,7 @@ def test_preprocess_dataset(use_preprocessor):
     prompt.metadata.is_mcq = False
     preprocessor = None
     if use_preprocessor:
-        preprocessor = ANLIPreprocessor()
+        preprocessor = TwoChoiceEntailmentPreprocessor()
         prompt.answer_choices = " ||| ".join(preprocessor.choices)
 
     result, original, choice_set_tokenized = preprocessing.preprocess_dataset(

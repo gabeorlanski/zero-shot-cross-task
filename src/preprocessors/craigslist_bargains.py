@@ -13,20 +13,53 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             add_speaker_prefix: bool = False,
             fair_trade_tol=1e-3,
             choices=None,
-            question_str: str = "Who won the negotiation?",
-            background_info_str: str = "The buyer wanted ${:.2f}, the seller wanted "
-                                       "${:.2f}, and the final price is ${:.2f}",
+            classification_template: str = None,
+            premise_template: str = None,
+            hypothesis_template: str = None,
+            question_template: str = None,
+            context_template: str = None,
             use_constant_domain: bool = False,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str:str=None
+            mcq_choice_str: str = None
     ):
+        self.question_str = "Who won the negotiation?"
+
+        self.background_info_str = "The buyer wanted ${:.2f}, the seller wanted" \
+                                   " ${:.2f}, and the final price is ${:.2f}."
+
         if choices is None:
             choices = ["Seller", "Buyer", "Neither", "Unknown"]
         assert len(choices) == 4
 
+        classification_template = (
+                classification_template
+                or self.background_info_str + " {}"
+        )
+        premise_template = (
+                premise_template
+                or "{}"
+        )
+        hypothesis_template = (
+                hypothesis_template
+                or self.background_info_str
+        )
+        context_template = (
+                context_template
+                or "{}"
+        )
+        question_template = (
+                question_template
+                or self.background_info_str + ' ' + self.question_str
+        )
+
         super().__init__(
             choices=choices,
+            classification_template=classification_template,
+            premise_template=premise_template,
+            hypothesis_template=hypothesis_template,
+            question_template=question_template,
+            context_template=context_template,
             choice_str=choice_str,
             mcq_choice_str=mcq_choice_str,
             is_mcq=is_mcq
@@ -39,8 +72,6 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             "NEITHER": 2,
             "UNKNOWN": 3
         }
-        self.question_str = question_str
-        self.background_info_str = background_info_str
         self.use_constant_domain = use_constant_domain
 
     def _process_instance(self, data_instance, idx) -> Dict:
@@ -48,10 +79,9 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         item_category = data_instance['items']['Category'][0]
         listing_price = data_instance['items']['Price'][0]
         output_dict = {
-            "choices"      : self.choices,
-            "idx"          : idx,
-            "domain"       : "negotiations" if self.use_constant_domain else item_category,
-            "listing_price": listing_price
+            "choices": self.choices,
+            "idx"    : idx,
+            "domain" : "negotiations" if self.use_constant_domain else item_category,
         }
 
         # Get the utterances
@@ -78,7 +108,7 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         output_dict['seller_target'] = seller_target
         output_dict['label'] = self.label_to_int[label]
 
-        output_dict['additional_input_1'] = output_dict['listing_price']
+        output_dict['additional_input_1'] = listing_price
         return output_dict
 
     def _get_label(self, intents, prices, targets):
@@ -120,41 +150,33 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         return label, final_price, buyer_target, seller_target
 
     def convert_to_classification(self, processed_instance: Dict) -> Dict:
-        price_target_str = self.background_info_str.format(
-            processed_instance['buyer_target'],
-            processed_instance['seller_target'],
-            processed_instance['final_price']
-        )
-
-        processed_instance['input_sequence'] = (
-                price_target_str
-                + ". "
-                + processed_instance['input_sequence']
+        processed_instance['input_sequence'] = self.classification_template.format(
+            processed_instance.pop('buyer_target'),
+            processed_instance.pop('seller_target'),
+            processed_instance.pop('final_price'),
+            processed_instance['input_sequence']
         )
         return processed_instance
 
     def convert_to_entailment(self, processed_instance: Dict) -> Dict:
 
         out = deepcopy(processed_instance)
-        out['hypothesis'] = self.background_info_str.format(
-            processed_instance['buyer_target'],
-            processed_instance['seller_target'],
-            processed_instance['final_price']
+        out['hypothesis'] = self.hypothesis_template.format(
+            out.pop('buyer_target'),
+            out.pop('seller_target'),
+            out.pop('final_price'),
         )
-        input_sequence = out.pop('input_sequence')
-        out['premise'] = input_sequence
+        out['premise'] = self.premise_template.format(out.pop('input_sequence'))
 
         return out
 
     def convert_to_qa(self, processed_instance: Dict) -> Dict:
 
         out = deepcopy(processed_instance)
-        out['question'] = self.background_info_str.format(
-            processed_instance['buyer_target'],
-            processed_instance['seller_target'],
-            processed_instance['final_price']
+        out['question'] = self.question_template.format(
+            out.pop('buyer_target'),
+            out.pop('seller_target'),
+            out.pop('final_price'),
         )
-        input_sequence = out.pop('input_sequence')
-        out['context'] = input_sequence
-
+        out['context'] = self.context_template.format(out.pop('input_sequence'))
         return out

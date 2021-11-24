@@ -5,3 +5,14 @@ name: rte
 verbose_name: RecognizingTextualEntailment
 parent_dataset: super_glue
 category: NLI
+
+preprocessor:
+  name: "two_choice_entailment"
+  choices: null
+  choice_str: null
+  mcq_choice_str: null
+  classification_template: null
+  premise_template: null
+  hypothesis_template: null
+  question_template: null
+  context_template: null

@@ -1,10 +1,10 @@
 import pytest
 from datasets import load_dataset, set_caching_enabled
 
-from src.preprocessors import anli, TaskMode
+from src.preprocessors import entailment, TaskMode
 
 
-class TestAnliPreprocessor:
+class TestEntailmentPreprocessor:
 
     def setup(self):
         set_caching_enabled(False)
@@ -13,11 +13,16 @@ class TestAnliPreprocessor:
         set_caching_enabled(True)
 
     @pytest.mark.parametrize("mode", list(TaskMode), ids=list(map(str, TaskMode)))
-    def test_call(self, mode):
-        processor = anli.ANLIPreprocessor()
-        processor.set_mode(mode)
+    @pytest.mark.parametrize("choice_count", [3,2], ids=['3Choice','2Choice'])
+    def test_call(self, mode, choice_count):
 
-        ds = load_dataset("anli", split='train_r1[:5]')
+        if choice_count == 3:
+            processor = entailment.ThreeChoiceEntailmentPreprocessor()
+            ds = load_dataset("anli", split='train_r1[:5]')
+        else:
+            processor = entailment.TwoChoiceEntailmentPreprocessor()
+            ds = load_dataset("super_glue", "rte", split='train[:5]')
+        processor.set_mode(mode)
 
         result_ds = ds.map(  # type:ignore
             processor,

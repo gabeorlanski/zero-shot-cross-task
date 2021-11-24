@@ -17,7 +17,12 @@ class TaskMode(Enum):
 class FixedChoiceTaskPreprocessor(Registrable):
     def __init__(
             self,
-            choices: List = None,
+            choices: List[str],
+            classification_template: str,
+            premise_template: str,
+            hypothesis_template: str,
+            question_template: str,
+            context_template: str,
             choice_str: str = None,
             mcq_choice_str: str = None,
             is_mcq: bool = False
@@ -57,6 +62,14 @@ class FixedChoiceTaskPreprocessor(Registrable):
                 "context" : str
             }
         }
+
+        # Some tasks take a certain number of inputs so we need a way to map
+        # the inputs to these tasks. These templates serve that purpose.
+        self.classification_template = classification_template
+        self.premise_template = premise_template
+        self.hypothesis_template = hypothesis_template
+        self.context_template = context_template
+        self.question_template = question_template
 
     @property
     def required_keys_for_mode(self) -> Dict:

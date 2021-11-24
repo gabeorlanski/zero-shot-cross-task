@@ -34,11 +34,7 @@ class TestCraigslistBargainsPreprocessor:
             "additional_input_1",
             "choices",
             "domain",
-            "listing_price",
-            "choice_string",
-            "buyer_target",
-            "seller_target",
-            "final_price"
+            "choice_string"
         }
         if mode == TaskMode.CLASSIFICATION:
             expected_columns.add("input_sequence")
@@ -92,11 +88,11 @@ class TestCraigslistBargainsPreprocessor:
                 for i, utt in enumerate(ds[idx]['utterance'])
             ]
             if mode == TaskMode.QA:
-                assert result['question'] == price_str
+                assert result['question'] == price_str + " " + processor.question_str
             elif mode == TaskMode.ENTAILMENT:
                 assert result['hypothesis'] == price_str
             else:
-                expected_sequence[0] = price_str + ". " + expected_sequence[0]
+                expected_sequence[0] = price_str + " " + expected_sequence[0]
 
             assert len(result_sequence) == len(expected_sequence), "Sequence length is wrong"
             for j, (r, e) in enumerate(zip(result_sequence, expected_sequence)):
@@ -126,7 +122,7 @@ class TestCraigslistBargainsPreprocessor:
 
         final_price = -1
         for p in dialogue_acts[1][::-1]:
-            if p > -1: #type: ignore
+            if p > -1:  # type: ignore
                 final_price = p
                 break
         if dialogue_acts[0][-1] != "accept":

@@ -7,5 +7,12 @@ category:
   - NLI
 
 preprocessor:
-  name: "anli"
+  name: "three_choice_entailment"
   choices: null
+  choice_str: null
+  mcq_choice_str: null
+  classification_template: null
+  premise_template: null
+  hypothesis_template: null
+  question_template: null
+  context_template: null

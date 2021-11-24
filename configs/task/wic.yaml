@@ -5,3 +5,14 @@ name: wic
 verbose_name: WordsinContext
 parent_dataset: super_glue
 category: Word Sense Disambiguation
+
+preprocessor:
+  name: "wic"
+  choices: null
+  choice_str: null
+  mcq_choice_str: null
+  classification_template: null
+  premise_template: null
+  hypothesis_template: null
+  question_template: null
+  context_template: null
