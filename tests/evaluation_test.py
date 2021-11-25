@@ -77,8 +77,7 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
         tokenizer=tokenizer,
         model=model,
         device=device,
-        length_normalize=length_normalized, batch_size=batch_size,
-        disable_amp=True
+        length_normalize=length_normalized, batch_size=batch_size
     )
 
     assert len(result['targets']) == len(expected_targets)

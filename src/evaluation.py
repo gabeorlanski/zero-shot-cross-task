@@ -71,8 +71,7 @@ def generate_predictions_choices(
         model: PreTrainedModel,
         device: torch.device,
         length_normalize: bool = False,
-        batch_size: int = 1,
-        disable_amp:bool=False
+        batch_size: int = 1
 ) -> Dict[str, List]:
     """
     Generate predictions when using answer choices. It WILL NOT handle batch
@@ -112,7 +111,7 @@ def generate_predictions_choices(
     )
     targets = []
     dataset_scores = []
-    with torch.no_grad() and torch.cuda.amp.autocast(enabled=not disable_amp,cache_enabled=False):
+    with torch.no_grad():
         batch_num = 0
         for batch in tqdm(data_loader, desc="Generating"):
             generated = model(
