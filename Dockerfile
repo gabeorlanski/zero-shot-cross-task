@@ -25,5 +25,7 @@ RUN cd promptsource && pip install -r requirements.txt && pip install -e .
 RUN pip install --no-cache-dir torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
 
 ENV CUBLAS_WORKSPACE_CONFIG=:4096:8
+COPY scripts/download_t0.py .
+RUN python download_t0.py
 
 COPY . .
