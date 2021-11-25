@@ -5,7 +5,10 @@ python experiment.py +run_name="CTBase" task=anli +split=dev_r3 \
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+  evaluation.length_normalization=True \
+  batch_size=6 \
+  prompt_count=5 \
+  disable_tracking=True
 
 python experiment.py +run_name="CTBase" task=craigslist_bargains +split=validation \
   num_proc=4 \
@@ -13,13 +16,15 @@ python experiment.py +run_name="CTBase" task=craigslist_bargains +split=validati
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
-  batch_size=1
+  batch_size=6 \
+  prompt_count=5 \
+  disable_tracking=True
 
-python experiment.py +run_name="CTBase" task=rte +split=validation \
-  num_proc=4 \
-  prompt_experiment_mode=cross_task \
-  prompt_path=prompts/general_fixed_choice.yaml \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True \
-  batch_size=1
+#python experiment.py +run_name="CTBase" task=rte +split=validation \
+#  num_proc=4 \
+#  prompt_experiment_mode=cross_task \
+#  prompt_path=prompts/general_fixed_choice.yaml \
+#  model_name="bigscience/T0_3B" \
+#  evaluation.length_normalization=True \
+#  batch_size=1
 
