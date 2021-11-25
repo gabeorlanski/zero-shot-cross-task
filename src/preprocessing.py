@@ -104,19 +104,20 @@ def tokenize_rank_choices(
     inputs_tokenized = tokenizer(
         ex['inputs'].decode('utf-8') if not is_string_input else ex['inputs'],
         max_length=1024, truncation=True)
+    max_label_len = max_choice_len + 1
     labels_tokenized = tokenizer(
         ex['targets'].decode('utf-8') if not is_string_input else ex['targets'],
-        max_length=max_choice_len + 1,
+        max_length=max_label_len + (max_label_len % 2),
         padding="max_length"
     )
     return {
-        "idx"                 : ex['idx'],
-        "ex_idx"              : ex['idx'][0],
-        "choice_idx"          : ex['idx'][1],
-        "is_correct"          : ex['is_correct'],
-        "labels"              : labels_tokenized['input_ids'],
+        "idx"                  : ex['idx'],
+        "ex_idx"               : ex['idx'][0],
+        "choice_idx"           : ex['idx'][1],
+        "is_correct"           : ex['is_correct'],
+        "labels"               : labels_tokenized['input_ids'],
         "labels_attention_mask": labels_tokenized['attention_mask'],
-        "labels_len"          : sum(labels_tokenized['attention_mask']),
-        "input_len"           : len(inputs_tokenized['input_ids']),
+        "labels_len"           : sum(labels_tokenized['attention_mask']),
+        "input_len"            : len(inputs_tokenized['input_ids']),
         **inputs_tokenized
     }

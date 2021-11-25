@@ -71,7 +71,8 @@ def generate_predictions_choices(
         model: PreTrainedModel,
         device: torch.device,
         length_normalize: bool = False,
-        batch_size: int = 1
+        batch_size: int = 1,
+        disable_amp:bool=False
 ) -> Dict[str, List]:
     """
     Generate predictions when using answer choices. It WILL NOT handle batch
@@ -98,7 +99,7 @@ def generate_predictions_choices(
     logger.info(f"Generating Choices")
     collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
-        pad_to_multiple_of=1,
+        pad_to_multiple_of=2,
         max_length=1024,
         padding='longest',
         label_pad_token_id=tokenizer.pad_token_id
@@ -111,7 +112,7 @@ def generate_predictions_choices(
     )
     targets = []
     dataset_scores = []
-    with torch.no_grad():
+    with torch.no_grad() and torch.cuda.amp.autocast(enabled=not disable_amp):
         batch_num = 0
         for batch in tqdm(data_loader, desc="Generating"):
             generated = model(
@@ -126,7 +127,7 @@ def generate_predictions_choices(
                 )
 
             choice_mask = batch['labels_attention_mask']
-            choice_mask[torch.arange(batch_size), batch['labels_len'] - 1] = 0
+            choice_mask[torch.arange(logits.shape[0]), batch['labels_len'] - 1] = 0
             choice_logits = logits[
                                 torch.arange(logits.shape[0]).unsqueeze(-1),
                                 torch.arange(logits.shape[1]),

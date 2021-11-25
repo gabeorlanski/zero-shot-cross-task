@@ -27,9 +27,7 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
     original_dataset = load_dataset("anli", split="train_r1[:16]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
     device = torch.device(device_name)
-    model = T5ForConditionalGeneration.from_pretrained('t5-small').to(device)
-    model.eval()
-
+    batch_size = 1
     tokenized, ds, choices_tokenized = preprocess_dataset(
         "Testing",
         original_dataset,
@@ -42,33 +40,45 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
     expected_scores = {}
 
     with torch.no_grad():
-        for batch in tokenized.to_dict(batched=True, batch_size=1):
+        model = T5ForConditionalGeneration.from_pretrained('t5-small').to(device)
+        model.eval()
+        for batch in tokenized.to_dict(batched=True, batch_size=batch_size):
+            padded = tokenizer.pad(
+                {'input_ids': batch['input_ids'], "attention_mask": batch['attention_mask']},
+                padding="longest",
+                max_length=1024,
+            )
+
             model_output = model(
-                input_ids=torch.tensor(batch['input_ids'][0], device=device).unsqueeze(0),
-                attention_mask=torch.tensor(batch['attention_mask'][0], device=device).unsqueeze(0),
-                labels=torch.tensor(batch['labels'][0], device=device).unsqueeze(0)
+                input_ids=torch.tensor(padded['input_ids'], device=device),
+                attention_mask=torch.tensor(padded['attention_mask'], device=device),
+                labels=torch.tensor(batch['labels'], device=device)
             )
 
-            item_key = f"{batch['idx'][0][0]}|{batch['idx'][0][1]}"
+            for b in range(batch_size):
+                item_key = f"{batch['idx'][b][0]}|{batch['idx'][b][1]}"
 
-            expected_targets[item_key] = (
-                (batch['idx'][0], batch['is_correct'][0], 1.0)
-            )
-            choice_idx = batch['choice_idx'][0]
-            logits = model_output.logits[0]
-            score = 0
-            for i, t in enumerate(choices_tokenized[choice_idx]):
-                score += logits[i, t].item()
-            expected_scores[item_key] = score / (
-                1 if not length_normalized else len(choices_tokenized[choice_idx])
-            )
+                expected_targets[item_key] = (
+                    (batch['idx'][b], batch['is_correct'][b], 1.0)
+                )
+                choice_idx = batch['choice_idx'][b]
+                logits = model_output.logits[b]
+                score = 0
+                for i, t in enumerate(choices_tokenized[choice_idx]):
+                    score += logits[i, t].item()
+                expected_scores[item_key] = score / (
+                    1 if not length_normalized else len(choices_tokenized[choice_idx])
+                )
 
+    model = T5ForConditionalGeneration.from_pretrained('t5-small').to(device)
+    model.eval()
     result = evaluation.generate_predictions_choices(
         tokenized.sort('choice_idx'),
         tokenizer=tokenizer,
         model=model,
         device=device,
-        length_normalize=length_normalized
+        length_normalize=length_normalized, batch_size=batch_size,
+        disable_amp=True
     )
 
     assert len(result['targets']) == len(expected_targets)
@@ -84,7 +94,7 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
 
         assert target == expected_target, f"{i}:{item_key} does not have correct target"
         assert math.isclose(
-            score, expected_score, rel_tol=1e-6
+            score, expected_score, rel_tol=1e-3
         ), f"{i}:{item_key} does not have correct score"
 
     assert set(expected_targets) == set()
