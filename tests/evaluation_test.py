@@ -16,18 +16,19 @@ from src import evaluation
 from src.preprocessing import preprocess_dataset
 
 
-@pytest.mark.parametrize("prompt_name", ["claim true/false/inconclusive", "guaranteed true"])
 @pytest.mark.parametrize("length_normalized", [True, False],
                          ids=["W/Normalization", "No Normalization"])
 @pytest.mark.parametrize("device_name", ['cpu', 0], ids=["CPU", "GPU"])
-def test_generate_prediction_choices(prompt_name, length_normalized, device_name):
+@pytest.mark.parametrize("batch_size", [1, 2], ids=["Single", "Double"])
+def test_generate_prediction_choices(length_normalized, device_name, batch_size):
+    prompt_name = "guaranteed true"
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
     torch.use_deterministic_algorithms(True)
     tokenizer = AutoTokenizer.from_pretrained("t5-small")
     original_dataset = load_dataset("anli", split="train_r1[:16]")
     prompt: Template = DatasetTemplates('anli')[prompt_name]
     device = torch.device(device_name)
-    batch_size = 1
+    # batch_size = 1
     tokenized, ds, choices_tokenized = preprocess_dataset(
         "Testing",
         original_dataset,
@@ -54,7 +55,7 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
                 attention_mask=torch.tensor(padded['attention_mask'], device=device),
                 labels=torch.tensor(batch['labels'], device=device)
             )
-
+            logits = model_output.logits.cpu().detach()
             for b in range(batch_size):
                 item_key = f"{batch['idx'][b][0]}|{batch['idx'][b][1]}"
 
@@ -62,10 +63,12 @@ def test_generate_prediction_choices(prompt_name, length_normalized, device_name
                     (batch['idx'][b], batch['is_correct'][b], 1.0)
                 )
                 choice_idx = batch['choice_idx'][b]
-                logits = model_output.logits[b]
+
                 score = 0
+                gathered_logits = []
                 for i, t in enumerate(choices_tokenized[choice_idx]):
-                    score += logits[i, t].item()
+                    score += logits[b, i, t].item()
+                    gathered_logits.append(logits[b, i, t].item())
                 expected_scores[item_key] = score / (
                     1 if not length_normalized else len(choices_tokenized[choice_idx])
                 )

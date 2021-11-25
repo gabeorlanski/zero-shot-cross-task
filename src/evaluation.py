@@ -10,7 +10,6 @@ import json
 import numpy as np
 from datasets import Dataset
 
-import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +108,7 @@ def generate_predictions_choices(
         collate_fn=collator,
         shuffle=False
     )
+
     targets = []
     dataset_scores = []
     with torch.no_grad():
@@ -127,18 +127,16 @@ def generate_predictions_choices(
 
             choice_mask = batch['labels_attention_mask']
             choice_mask[torch.arange(logits.shape[0]), batch['labels_len'] - 1] = 0
-            choice_logits = logits[
-                                torch.arange(logits.shape[0]).unsqueeze(-1),
-                                torch.arange(logits.shape[1]),
-                                batch['labels']
-                            ] * choice_mask
-
+            choice_logits = torch.gather(
+                logits, -1, batch['labels'].unsqueeze(-1)
+            ).squeeze(-1) * choice_mask
             scores = choice_logits.sum(-1)
+
             if length_normalize:
                 scores /= choice_mask.sum(-1)
             dataset_scores.extend(scores.tolist())
 
-            if (batch_num+1) % 10 == 0:
+            if (batch_num + 1) % 10 == 0:
                 torch.cuda.empty_cache()
 
     return {'targets': targets, "scores": dataset_scores}

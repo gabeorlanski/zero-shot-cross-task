@@ -5,14 +5,16 @@ python experiment.py +run_name="CTBase" task=anli +split=dev_r1 \
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+  evaluation.length_normalization=True \
+  batch_size=28
 
 python experiment.py +run_name="CTBase" task=anli +split=dev_r2 \
   num_proc=4 \
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+  evaluation.length_normalization=True \
+  batch_size=28
 
 
 python experiment.py +run_name="CTBase" task=cb +split=validation \
@@ -20,7 +22,8 @@ python experiment.py +run_name="CTBase" task=cb +split=validation \
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=True
+  evaluation.length_normalization=True \
+  batch_size=28
 
 
 python experiment.py +run_name="CTBase" task=wic +split=validation \
@@ -29,4 +32,4 @@ python experiment.py +run_name="CTBase" task=wic +split=validation \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
-  batch_size=1
+  batch_size=28
