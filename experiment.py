@@ -25,7 +25,11 @@ def run(cfg: DictConfig):
     Args:
         cfg: Run configs
     """
-    os.environ['CUBLAS_WORKSPACE_CONFIG']=":4096:8"
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+
+    wandb_api_key = PROJECT_ROOT.joinpath('wandb_api').read_text('utf-8').strip()
+    os.environ["WANDB_API_KEY"] = wandb_api_key
+
     torch.use_deterministic_algorithms(True)
     logger.info(f"Starting Experiment.")
     # Setup the seeds and logging

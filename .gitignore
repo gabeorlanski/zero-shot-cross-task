@@ -127,3 +127,5 @@ results/
 .idea/
 
 outputs/
+logs/
+wandb_api

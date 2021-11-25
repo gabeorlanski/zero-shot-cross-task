@@ -687,6 +687,50 @@ templates:
       task_mode: ENTAILMENT
     name: take the following as truth
     reference: v0.1
+  fb4f8144-37f5-4977-88da-37a5d0bfd0e8: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: fb4f8144-37f5-4977-88da-37a5d0bfd0e8
+    jinja: 'Given that {{ premise }} Therefore, it must be true that "{{ hypothesis }}"?
+      {{ choice_string }}? ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: must be true
+    reference: v0.1
+  9e078fb4-505b-413c-bb5e-3cd16ddcf5d7: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 9e078fb4-505b-413c-bb5e-3cd16ddcf5d7
+    jinja: '"{{premise}} \n\nQuestion: Does this imply that \"{{hypothesis}}\"? {{ choice_string }}? ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: does this imply
+    reference: v0.1
+  2d0d63da-ffcf-4f6e-941a-b8da922be43e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 2d0d63da-ffcf-4f6e-941a-b8da922be43e
+    jinja: 'Given {{premise}} Is it guaranteed true that "{{hypothesis}}"? {{ choice_string }}?
+      ||| {{ answer_choices[label] }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: anli
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: guaranteed true
+    reference: Webson & Pavlick 2021
   0edd8660-f299-4819-a5ac-633c11177228: !Template
     answer_choices: '{{ choices | join("|||") }}'
     choice_string: 'N/A'
@@ -811,4 +855,274 @@ templates:
       is_mcq: false
       task_mode: ENTAILMENT
     name: affirmation_true_or_false
+    reference: ''
+  d31ef017-face-4837-a980-ee9fe8fe2b91: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: d31ef017-face-4837-a980-ee9fe8fe2b91
+    jinja: 'Python code: {{input_sequence}}\n
+      {% for choice in answer_choices %}\tchoice: {{ choice.strip() }}\n{% endfor %}
+      English language description:
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: BIG-BENCH
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: code line description
+    reference: ''
+  f91f2647-be17-4985-a106-0c6caa99310a: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: f91f2647-be17-4985-a106-0c6caa99310a
+    jinja: 'Q: {{ question }}\n
+      Clue(s):\n
+      {{ context }}\n
+      What is the answer?\n
+      {% for choice in answer_choices %}\tchoice: {{ choice.strip() }}\n{% endfor %}
+      A:
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: BIG-BENCH
+      is_mcq: false
+      task_mode: QA
+    name: logic grid
+    reference: ''
+  f3f924f3-5327-405b-b0a0-96f30a59136c: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: f3f924f3-5327-405b-b0a0-96f30a59136c
+    jinja: 'The following paragraphs each describe a set of five objects arranged in a fixed order. The statements are logically consistent within each paragraph.
+
+
+      On a shelf, there are five books: {{ input_sequence }}
+      ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+      metrics:
+        - Accuracy
+      original_task: BIG-BENCH
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: logical deduction
+    reference: ''
+  31fb1471-b3c4-4f99-9134-87239a4ebfe9: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 31fb1471-b3c4-4f99-9134-87239a4ebfe9
+    jinja: "Q: {{ input_sequence }}\n
+      {% for choice in answer_choices %}\tchoice: {{ choice.strip() }}\n{% endfor %}
+      A:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BIG-BENCH
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: known unknowns
+    reference: ''
+  9da09aae-5b38-42ca-8082-87d2fa84c41d: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 9da09aae-5b38-42ca-8082-87d2fa84c41d
+    jinja: "Let's do some find-the-common-concept problems. In these problems, your goal is to identify the underlying concept or theme that relates the things listed. Make sure to answer carefully.
+        What do the following have in common? {{ input_sequence }}
+        A:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BIG-BENCH
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: novel concepts
+    reference: ''
+  88bdb026-e9c9-445b-96ef-0cdb986b7fbd: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 88bdb026-e9c9-445b-96ef-0cdb986b7fbd
+    jinja: "{{ input_sequence }}\n {{choice_string}}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: classification choices
+    reference: ''
+  bb648cf3-d9ab-45a8-9bd7-6ba4585c4b9a: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: bb648cf3-d9ab-45a8-9bd7-6ba4585c4b9a
+    jinja: "{{ premise }}\n{{ hypothesis}}\n{{choice_string}}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: entailment choices
+    reference: ''
+  d92fc0d4-5367-41e1-b35d-1058f22a3c1c: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: d92fc0d4-5367-41e1-b35d-1058f22a3c1c
+    jinja: "{{ context }}\n{{ context }}\n{{choice_string}}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: QA
+    name: qa choices
+    reference: ''
+  74693ecc-f903-488c-968d-6a2bc8e76611: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 74693ecc-f903-488c-968d-6a2bc8e76611
+    jinja: "{{ input_sequence }}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: classification no choices
+    reference: ''
+  cc2958ca-e826-4fef-96aa-1c4caa188605: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: cc2958ca-e826-4fef-96aa-1c4caa188605
+    jinja: "{{ premise }}\n{{ hypothesis}}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: entailment no choices
+    reference: ''
+  97030be6-9843-4fc2-98cf-b47b879b5447: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 97030be6-9843-4fc2-98cf-b47b879b5447
+    jinja: "{{ context }}\n{{ context }}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: QA
+    name: qa no choices
+    reference: ''
+
+  32a28538-99bc-4c5a-8086-83b885fddb50: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 32a28538-99bc-4c5a-8086-83b885fddb50
+    jinja: "{{ input_sequence }}\n {{choice_string}} \nAnswer:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: classification choices and answer
+    reference: ''
+  c225e598-1efe-4cb6-9f7c-a1b7eb5c7803: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: c225e598-1efe-4cb6-9f7c-a1b7eb5c7803
+    jinja: "{{ premise }}\n{{ hypothesis}}\n{{choice_string}}\nAnswer:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: entailment choices and answer
+    reference: ''
+  2e94d035-3c3d-44cf-98cb-3d11bea7c17b: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 2e94d035-3c3d-44cf-98cb-3d11bea7c17b
+    jinja: "{{ context }}\n{{ context }}\n{{choice_string}}\nAnswer:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: True
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: QA
+    name: qa choices and answer
+    reference: ''
+  cf005ddf-8cf2-409d-b884-45d22463f463: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: cf005ddf-8cf2-409d-b884-45d22463f463
+    jinja: "{{ input_sequence }}\nAnswer:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: CLASSIFICATION
+    name: classification no choices and answer
+    reference: ''
+  e5eaa3ee-e537-4d20-9dfa-6084db54f2ef: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: e5eaa3ee-e537-4d20-9dfa-6084db54f2ef
+    jinja: "{{ premise }}\n{{ hypothesis}}\nAnswer:
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: ENTAILMENT
+    name: entailment no choices and answer
+    reference: ''
+  f2004e15-9d9a-4ca1-9830-a341e684e97e: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: f2004e15-9d9a-4ca1-9830-a341e684e97e
+    jinja: "{{ context }}\n{{ context }}
+      ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: False
+      metrics:
+        - Accuracy
+      original_task: BAREBONES
+      is_mcq: false
+      task_mode: QA
+    name: qa no choices and answer
     reference: ''
