@@ -96,6 +96,7 @@ def run(cfg: DictConfig):
             choices=preprocessor.choices,
             choice_str=preprocessor.choice_string,
             mcq_choice_str=preprocessor.mcq_choice_string,
+            tasks=cfg['prompt_tasks'],
             prompt_filter_kwargs=cfg['prompt_filter'],
         )
 

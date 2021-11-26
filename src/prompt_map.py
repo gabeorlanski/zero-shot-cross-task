@@ -250,6 +250,7 @@ def load_generalized_prompts(
         choices: List = None,
         choice_str: str = None,
         mcq_choice_str: str = None,
+        tasks: List[str] = None,
         prompt_filter_kwargs: Dict = None
 ):
     if not prompt_path.exists():
@@ -272,6 +273,11 @@ def load_generalized_prompts(
             prompt.choice_string = choice_str
             if prompt.metadata.is_mcq:
                 prompt.choice_string = mcq_choice_str
+
+        if tasks is not None and prompt.metadata.original_task not in tasks:
+            logger.info(f"Skipping {prompt.metadata.original_task}: {prompt.name}"
+                        f" as it is not in the task filter")
+            continue
 
         out.append((
             prompt_file_dict['short_name'],
