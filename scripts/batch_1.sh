@@ -7,7 +7,7 @@ python experiment.py +run_name="CT_TNF" task=anli +split=dev_r1 \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
   batch_size=28 \
-  "task.preprocessor.choices=['Imply','Neither','Contradicts']"
+  "task.preprocessor.choices=['True','Neither','False']"
 
 python experiment.py +run_name="CT_TNF" task=anli +split=dev_r2 \
   num_proc=4 \
