@@ -92,7 +92,7 @@ def run(cfg: DictConfig):
 
         prompts_to_use = load_generalized_prompts(
             PROJECT_ROOT.joinpath(cfg['prompt_path']),
-            task_name=task_name,
+            task_name=prompt_task,
             choices=preprocessor.choices,
             choice_str=preprocessor.choice_string,
             mcq_choice_str=preprocessor.mcq_choice_string,
@@ -102,7 +102,8 @@ def run(cfg: DictConfig):
 
     else:
         prompts_to_use = load_prompts(
-            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter']
+            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter'],
+            blacklist=task_cfg.get('prompt_blacklist', None)
         )
 
     if cfg["prompt_count"] is not None and cfg["prompt_count"] > 0:

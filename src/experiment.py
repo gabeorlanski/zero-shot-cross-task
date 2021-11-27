@@ -205,6 +205,10 @@ def run_experiments(
 
         experiment_name = f"{group_name}[{split_file_name}]:{prompt_fn}"
 
+        if prompt.get_fixed_answer_choices_list() is None:
+            logger.info(f"Skipping {prompt.name} as it is not fixed choice")
+            continue
+
         ds_used, results_path = single_experiment(
             cfg=cfg,
             prompt=prompt,

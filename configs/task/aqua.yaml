@@ -2,11 +2,14 @@ defaults:
   - _self_
 
 name: raw
+override_name: aqua_rat
 verbose_name: AQuA
 dir_name: aqua_rat
 parent_dataset: aqua_rat
 category:
   - Math QA
+prompt_blacklist:
+  - generate_rational_and_correct_choice
 
 preprocessor:
   name: "aqua_rat"

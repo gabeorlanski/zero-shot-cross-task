@@ -114,7 +114,8 @@ class PromptMapper:
 def load_prompts(
         prompt_task: str,
         categories: List,
-        prompt_filter_kwargs: Optional[Dict] = None
+        prompt_filter_kwargs: Optional[Dict] = None,
+        blacklist: Optional[List[str]] = None
 ):
     task_prompt_templates = DatasetTemplates(prompt_task)
     prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
@@ -122,6 +123,9 @@ def load_prompts(
 
     prompts_to_use = []
     for prompt in filter_prompts(task_prompt_templates.templates, **prompt_filter_kwargs):
+        if blacklist and prompt.name in blacklist:
+            logger.info(f"Skipping {prompt.name}, in blacklist")
+            continue
         # Add the group name and the prompt name to the list of prompts to use.
         prompts_to_use.append(
             (DEFAULT_PROMPT_GROUP, prompt, {
