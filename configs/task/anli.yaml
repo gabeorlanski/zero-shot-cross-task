@@ -3,6 +3,7 @@ defaults:
   - ../general_prompts@general_prompts: three_choice_entailment
 
 name: anli
+dir_name: anli
 category:
   - NLI
 

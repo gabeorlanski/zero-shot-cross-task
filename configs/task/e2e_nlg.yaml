@@ -2,6 +2,7 @@ defaults:
   - _self_
 
 name: e2e_nlg_cleaned
+dir_name: e2e_nlg
 category:
   - Conditonal Text Generation
 

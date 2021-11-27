@@ -42,4 +42,4 @@ prompt_filter:
 
 hydra:
   run:
-    dir: outputs/${task.name}.${split}
+    dir: outputs/${task.dir_name}.${split}

@@ -1,10 +1,10 @@
 import pytest
 from datasets import load_dataset, set_caching_enabled
 
-from src.preprocessors import entailment, TaskMode
+from src.preprocessors import aqua_rat, TaskMode
 
 
-class TestEntailmentPreprocessor:
+class TestCraigslistBargainsPreprocessor:
 
     def setup(self):
         set_caching_enabled(False)
@@ -13,16 +13,11 @@ class TestEntailmentPreprocessor:
         set_caching_enabled(True)
 
     @pytest.mark.parametrize("mode", list(TaskMode), ids=list(map(str, TaskMode)))
-    @pytest.mark.parametrize("choice_count", [3,2], ids=['3Choice','2Choice'])
-    def test_call(self, mode, choice_count):
-
-        if choice_count == 3:
-            processor = entailment.ThreeChoiceEntailmentPreprocessor()
-            ds = load_dataset("anli", split='train_r1[:5]')
-        else:
-            processor = entailment.TwoChoiceEntailmentPreprocessor()
-            ds = load_dataset("super_glue", "rte", split='train[:5]')
+    def test_call(self, mode):
+        processor = aqua_rat.AquaRatPreprocessor()
         processor.set_mode(mode)
+
+        ds = load_dataset("aqua_rat", "raw", split='train[:5]')
 
         result_ds = ds.map(  # type:ignore
             processor,
@@ -37,19 +32,25 @@ class TestEntailmentPreprocessor:
             "domain",
             "choice_string"
         }
-        if mode == TaskMode.CLASSIFICATION or mode == TaskMode.MCQ:
-            expected_columns.add("input_sequence")
-        elif mode == TaskMode.QA:
+        if mode == TaskMode.QA:
             expected_columns.update(["question", "context"])
         elif mode == TaskMode.ENTAILMENT:
             expected_columns.update(['premise', 'hypothesis'])
+        else:
+            expected_columns.update(["input_sequence", "choice_string"])
 
         assert set(result_ds.column_names) == expected_columns
         assert len(result_ds) == 5
         result_ds = result_ds.sort('idx')
+        correct_to_int = {k: i for i, k in enumerate(["A", "B", "C", "D", "E"])}
 
         def add_idx(ex, _idx):
             ex['idx'] = _idx
+            ex['label'] = correct_to_int[ex['correct']]
+            ex['choice_string'] = '\n'.join(map(
+                lambda s: s.replace(')', ') '),
+                ex['options']
+            ))
             return ex
 
         ds = ds.map(
@@ -62,14 +63,12 @@ class TestEntailmentPreprocessor:
 
             assert result['label'] == expected['label']
 
-            expected_input_seq = f"Premise is '{expected['premise']}'. " \
-                                 f"Hypothesis is '{expected['hypothesis']}'."
-
             if mode == TaskMode.QA:
-                assert result['question'] == "Does the premise imply the hypothesis?"
-                assert result['context'] == expected_input_seq
+                assert result['question'] == expected["question"]
+                assert result['context'] == "Choices are: {}".format(expected['choice_string'])
             elif mode == TaskMode.ENTAILMENT:
-                assert result['premise'] == expected['premise']
-                assert result['hypothesis'] == expected['hypothesis']
+                assert result['premise'] == expected['question']
+                assert result['hypothesis'] == "Choices are: {}".format(expected['choice_string'])
             else:
-                assert result['input_sequence'] == expected_input_seq
+                assert result['input_sequence'] == expected["question"]
+                assert result['choice_string'] == expected['choice_string']

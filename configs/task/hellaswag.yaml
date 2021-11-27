@@ -3,6 +3,7 @@ defaults:
 
 name: hellaswag
 verbose_name: HellaSwag
+dir_name: hellaswag
 
 category:
   - SentenceCompletion

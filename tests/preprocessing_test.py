@@ -4,7 +4,7 @@ import pytest
 from transformers import AutoTokenizer, T5ForConditionalGeneration, DataCollatorForSeq2Seq, T5Config
 from datasets import load_dataset, set_caching_enabled, Dataset
 from promptsource.templates import DatasetTemplates
-from src.preprocessors import TwoChoiceEntailmentPreprocessor, TaskMode
+from src.preprocessors import ThreeChoiceEntailmentPreprocessor, TaskMode
 
 from src import preprocessing
 
@@ -22,7 +22,7 @@ def test_preprocess_dataset(use_preprocessor):
     prompt.metadata.is_mcq = False
     preprocessor = None
     if use_preprocessor:
-        preprocessor = TwoChoiceEntailmentPreprocessor()
+        preprocessor = ThreeChoiceEntailmentPreprocessor()
         prompt.answer_choices = " ||| ".join(preprocessor.choices)
 
     result, original, choice_set_tokenized = preprocessing.preprocess_dataset(
@@ -117,11 +117,11 @@ def test_tokenize_rank_choices():
     inputs_tok = tokenizer(ex['inputs'].decode('utf-8'))
     targets_tok = tokenizer(
         ex['targets'].decode('utf-8'),
-        max_length=5,
+        max_length=6,
         padding="max_length"
     )
 
-    result = preprocessing.tokenize_rank_choices(ex, tokenizer, 4)
+    result = preprocessing.tokenize_rank_choices(ex, tokenizer, 5)
 
     assert set(result) == {"idx", "input_ids", "attention_mask", "labels", "is_correct",
                            "input_len", "labels_len", "ex_idx", "choice_idx",

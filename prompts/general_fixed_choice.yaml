@@ -77,7 +77,7 @@ templates:
         - Accuracy
       original_task: craigslist_bargains
       is_mcq: True
-      task_mode: CLASSIFICATION
+      task_mode: MCQ
     name: best deal
     reference: explicitly asks model which party got the best deal
   2283cebf-988e-4bff-96bf-982a09963e49: !Template
@@ -165,7 +165,7 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
-      task_mode: CLASSIFICATION
+      task_mode: MCQ
     name: choose_correct_variant
     reference: 'Variant of choose_correct. '
   6312d599-8ca4-4bc8-a76f-81f2e36727bd: !Template
@@ -184,7 +184,7 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
-      task_mode: CLASSIFICATION
+      task_mode: MCQ
     name: choose_correct_og
     reference: The template asks the model to choose the correct answer.
   8c4c81cc-ca54-45fc-a69a-4b97a5f2b465: !Template
@@ -199,9 +199,38 @@ templates:
         - Accuracy
       original_task: math_qa
       is_mcq: true
-      task_mode: CLASSIFICATION
+      task_mode: MCQ
     name: pick_the_correct
     reference: The template picks the correct the answer choice
+  a313a5f8-53cd-4b76-abb6-fea2ac4e9ef4: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: a313a5f8-53cd-4b76-abb6-fea2ac4e9ef4
+    jinja: "One of the five choices are correctly answers the math problem. Can you\
+        \ choose the right one? \n\n{{ choice_string }}\n\nProblem: {{ input_sequence }}\n|||\n{{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: math_qa
+      is_mcq: true
+      task_mode: MCQ
+    name: first_choice_then_problem
+    reference: First give the list of choices and then describe the problem
+  eb89c860-5849-461a-9081-3bd466f5642c: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: eb89c860-5849-461a-9081-3bd466f5642c
+    jinja: "Solve this advanced GRE problem: \n{{input_sequence}}\n\n{{choice_string}}|||\n{{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: math_qa
+      is_mcq: true
+      task_mode: MCQ
+    name: gre_problem
+    reference: 'Template uses "GRE" as a prefix/template. '
   06719321-62e7-4f6e-8f95-464cd2b5ca5c: !Template
     answer_choices: '{{ choices | join("|||") }}'
     choice_string: '"negative", "neutral", "positive"'
@@ -1125,4 +1154,112 @@ templates:
       is_mcq: false
       task_mode: QA
     name: qa no choices and answer
+    reference: ''
+
+  13bd5099-33fa-4383-a441-33a7d2e1746f: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 13bd5099-33fa-4383-a441-33a7d2e1746f
+    jinja: 'Given the problem:
+
+      {{ input_sequence }}
+
+      and the options:
+
+      {% for choice in choice_string.split("\n") %}
+      - {{ choice }}
+      {% endfor %}
+
+      The correct answer is ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: aqua_rat/raw
+      is_mcq: true
+      task_mode: MCQ
+    name: select_the_best_option
+    reference: ''
+  58a6aa2b-ca26-473d-9bf8-385dd1a743cd: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 58a6aa2b-ca26-473d-9bf8-385dd1a743cd
+    jinja: 'You will now be given a question and a set of options. Choose the correct
+      option and provide a rationale for the same.
+      Question:
+      {{ input_sequence }}
+      Options:
+      {% for choice in choice_string.split("\n") %}
+      - {{ choice }}
+      {% endfor %}
+      |||
+      {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: aqua_rat/raw
+      is_mcq: true
+      task_mode: MCQ
+    name: generate_rational_and_correct_choice
+    reference: ''
+  5acfaa48-e1b6-44df-8e92-c58b94bff595: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 5acfaa48-e1b6-44df-8e92-c58b94bff595
+    jinja: 'Answer the given question by providing the correct rationale:\n\n{{input_sequence}}\n
+    {% for choice in choice_string.split("\n") %}
+        {{ choice }}
+    {% endfor %}
+    ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: aqua_rat/raw
+      is_mcq: true
+      task_mode: MCQ
+    name: generate_rationale
+    reference: ''
+  815acaf5-2e59-4f81-8190-ae75dc237cf1: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: 815acaf5-2e59-4f81-8190-ae75dc237cf1
+    jinja: '{{input_sequence}}
+        The above question was asked in a Math test. Given the following options, can
+        you choose the correct one?
+        {% for choice in choice_string.split("\n") %}
+        - {{ choice }}
+        {% endfor %}
+        |||
+        {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: aqua_rat/raw
+      is_mcq: true
+      task_mode: MCQ
+    name: answer_quiz
+    reference: ''
+  c0403841-68b0-4c08-8c3b-a00a81272d05: !Template
+    answer_choices: '{{ choices | join("|||") }}'
+    choice_string: 'N/A'
+    id: c0403841-68b0-4c08-8c3b-a00a81272d05
+    jinja: 'Solve the following question and choose the correct option.
+
+        {{input_sequence}}
+
+        {% for choice in choice_string.split("\n") %}
+        - {{ choice }}
+        {% endfor %}
+        ||| {{answer_choices[label]}}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: true
+      metrics:
+        - Accuracy
+      original_task: aqua_rat/raw
+      is_mcq: true
+      task_mode: MCQ
+    name: Answer questions from options
     reference: ''

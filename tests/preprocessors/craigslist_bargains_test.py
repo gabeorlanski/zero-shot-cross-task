@@ -36,7 +36,7 @@ class TestCraigslistBargainsPreprocessor:
             "domain",
             "choice_string"
         }
-        if mode == TaskMode.CLASSIFICATION:
+        if mode == TaskMode.CLASSIFICATION or mode == TaskMode.MCQ:
             expected_columns.add("input_sequence")
         elif mode == TaskMode.QA:
             expected_columns.update(["question", "context"])
@@ -77,7 +77,7 @@ class TestCraigslistBargainsPreprocessor:
             )
 
             input_key = "input_sequence"
-            if mode == TaskMode.ENTAILMENT:
+            if mode == TaskMode.ENTAILMENT :
                 input_key = "premise"
             elif mode == TaskMode.QA:
                 input_key = "context"

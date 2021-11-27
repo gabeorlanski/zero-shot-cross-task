@@ -32,7 +32,7 @@ class TestEntailmentPreprocessor:
             "domain",
             "choice_string"
         }
-        if mode == TaskMode.CLASSIFICATION:
+        if mode == TaskMode.CLASSIFICATION or mode == TaskMode.MCQ:
             expected_columns.add("input_sequence")
         elif mode == TaskMode.QA:
             expected_columns.update(["question", "context"])

@@ -12,6 +12,7 @@ class TaskMode(Enum):
     CLASSIFICATION = auto()
     ENTAILMENT = auto()
     QA = auto()
+    MCQ = auto()
 
 
 class FixedChoiceTaskPreprocessor(Registrable):
@@ -44,7 +45,8 @@ class FixedChoiceTaskPreprocessor(Registrable):
         self.mode_specific_processors = {
             TaskMode.CLASSIFICATION: self.convert_to_classification,
             TaskMode.ENTAILMENT    : self.convert_to_entailment,
-            TaskMode.QA            : self.convert_to_qa
+            TaskMode.QA            : self.convert_to_qa,
+            TaskMode.MCQ           : self.convert_to_classification
         }
 
         self.mode = TaskMode.CLASSIFICATION
@@ -60,7 +62,10 @@ class FixedChoiceTaskPreprocessor(Registrable):
             TaskMode.QA            : {
                 "question": str,
                 "context" : str
-            }
+            },
+            TaskMode.MCQ           : {
+                "input_sequence": str,
+            },
         }
 
         # Some tasks take a certain number of inputs so we need a way to map
@@ -108,10 +113,13 @@ class FixedChoiceTaskPreprocessor(Registrable):
 
         output = self.mode_key_converter(processed_instance)
 
-        if not self.is_mcq:
-            output['choice_string'] = self.choice_string
-        else:
-            output['choice_string'] = self.mcq_choice_string
+        # Some tasks like 'math_qa' may put in their own choice string, so if
+        # it is not in the processed instance, add it.
+        if 'choice_string' not in processed_instance:
+            if not self.is_mcq:
+                output['choice_string'] = self.choice_string
+            else:
+                output['choice_string'] = self.mcq_choice_string
 
         # Sanity check / validation
         self._validate_key(output, 'label', int)

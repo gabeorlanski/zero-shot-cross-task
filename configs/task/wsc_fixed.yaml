@@ -4,4 +4,5 @@ defaults:
 name: wsc.fixed
 verbose_name: TheWinogradSchemaChallenge.Fixed
 parent_dataset: super_glue
+dir_name: wsc.fixed
 category: Coreference Resolution

@@ -4,6 +4,7 @@ defaults:
 name: wic
 verbose_name: WordsinContext
 parent_dataset: super_glue
+dir_name: wic
 category: Word Sense Disambiguation
 
 preprocessor:
