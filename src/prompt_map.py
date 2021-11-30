@@ -299,13 +299,19 @@ def load_generalized_prompts(
         elif prompt.choice_string is not None:
             prompt.jinja = choice_str_regex.sub(prompt.choice_string, prompt.jinja)
 
+        # CB and Anli use the same prompts, so they need to be marked as
+        # original task
+        original_task = prompt.metadata.original_task == task_name
+        if task_name == 'super_glue/cb':
+            original_task = prompt.metadata.original_task == 'anli' or original_task
+
         out.append((
             prompt_file_dict['short_name'],
             prompt,
             {
                 "name"         : f"{sanitize_name(prompt.name)}",
                 "category"     : prompt_file_dict['group_name'],
-                "original_task": prompt.metadata.original_task == task_name,
+                "original_task": original_task,
                 "prompt_task"  : prompt.metadata.original_task,
                 "is_mcq"       : prompt.metadata.is_mcq,
                 "task_mode"    : str(prompt.metadata.task_mode),
