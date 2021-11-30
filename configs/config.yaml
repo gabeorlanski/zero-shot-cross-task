@@ -18,6 +18,7 @@ disable_tracking: False
 prompt_experiment_mode: default
 prompt_path: null
 prompt_tasks: null
+original_choice_str: False
 
 group:
   override_name: null

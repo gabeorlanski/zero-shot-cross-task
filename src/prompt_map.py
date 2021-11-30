@@ -8,6 +8,7 @@ import yaml
 from pathlib import Path
 from omegaconf import DictConfig
 from copy import deepcopy
+import re
 
 from src.common import sanitize_name
 
@@ -255,7 +256,8 @@ def load_generalized_prompts(
         choice_str: str = None,
         mcq_choice_str: str = None,
         tasks: List[str] = None,
-        prompt_filter_kwargs: Dict = None
+        prompt_filter_kwargs: Dict = None,
+        use_original_choice_string: bool = False
 ):
     if not prompt_path.exists():
         raise FileNotFoundError(f"Could not find general prompt file {prompt_path}")
@@ -266,6 +268,8 @@ def load_generalized_prompts(
 
     prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
     out = []
+    choice_str_regex = re.compile(r'{{ ?choice\_string ?}}')
+
     for prompt in filter_prompts(prompt_templates, **prompt_filter_kwargs):
         if choices:
             prompt.answer_choices = " ||| ".join(choices)
@@ -273,15 +277,27 @@ def load_generalized_prompts(
         if not hasattr(prompt.metadata, 'is_mcq'):
             raise AttributeError(f"Missing is_mcq from prompt {prompt.id}'s metadata")
 
-        if choice_str or mcq_choice_str:
-            prompt.choice_string = choice_str
-            if prompt.metadata.is_mcq:
-                prompt.choice_string = mcq_choice_str
+        choices_in_prompt = (
+                prompt.jinja.count('answer_choices') > 1
+                or prompt.jinja.count('choice_string') > 0
+        )
+        if prompt.metadata.choices_in_prompt and not choices_in_prompt:
+            raise ValueError(f"{prompt.id} has choice in prompt, but no choices are in prompt")
+        elif not prompt.metadata.choices_in_prompt and choices_in_prompt:
+            raise ValueError(f"{prompt.id} has no choice in prompt, but choices are in prompt")
 
         if tasks is not None and prompt.metadata.original_task not in tasks:
             logger.info(f"Skipping {prompt.metadata.original_task}: {prompt.name}"
                         f" as it is not in the task filter")
             continue
+
+        if not use_original_choice_string:
+            if choice_str or mcq_choice_str:
+                prompt.choice_string = choice_str
+                if prompt.metadata.is_mcq:
+                    prompt.choice_string = mcq_choice_str
+        elif prompt.choice_string is not None:
+            prompt.jinja = choice_str_regex.sub(prompt.choice_string, prompt.jinja)
 
         out.append((
             prompt_file_dict['short_name'],
@@ -292,7 +308,8 @@ def load_generalized_prompts(
                 "original_task": prompt.metadata.original_task == task_name,
                 "prompt_task"  : prompt.metadata.original_task,
                 "is_mcq"       : prompt.metadata.is_mcq,
-                "task_mode"    : str(prompt.metadata.task_mode)
+                "task_mode"    : str(prompt.metadata.task_mode),
+                "training_task": getattr(prompt.metadata, 'training_task', False)
             }
         ))
 

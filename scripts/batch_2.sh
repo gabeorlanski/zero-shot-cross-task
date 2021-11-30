@@ -7,7 +7,7 @@ python experiment.py +run_name="CTBase" task=anli +split=dev_r3 \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
   batch_size=28 \
-  "prompt_tasks=['aqua_rat/raw','math_qa','craigslist_bargains']"
+  "prompt_tasks=['BAREBONES','super_glue/wic','BIG-BENCH','zest','super_glue/rte','imdb','app_reviews','yelp','adversarial_qa']"
 
 python experiment.py +run_name="CTBase" task=anli +split=dev_r2 \
   num_proc=4 \
@@ -15,8 +15,8 @@ python experiment.py +run_name="CTBase" task=anli +split=dev_r2 \
   prompt_path=prompts/general_fixed_choice.yaml \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
-  batch_size=28 \
-  "prompt_tasks=['aqua_rat/raw','math_qa','craigslist_bargains']"
+  batch_size=28\
+  "prompt_tasks=['BAREBONES','super_glue/wic','BIG-BENCH','zest','super_glue/rte','imdb','app_reviews','yelp','adversarial_qa']"
 
 
 python experiment.py +run_name="CTBase" task=craigslist_bargains +split=validation \
@@ -26,7 +26,7 @@ python experiment.py +run_name="CTBase" task=craigslist_bargains +split=validati
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
   batch_size=12 \
-  "prompt_tasks=['aqua_rat/raw','math_qa','craigslist_bargains']"
+  "prompt_tasks=['BAREBONES','super_glue/wic','BIG-BENCH','zest','super_glue/rte','imdb','app_reviews','yelp','adversarial_qa']"
 
 
 python experiment.py +run_name="CTBase" task=rte +split=validation \
@@ -36,24 +36,4 @@ python experiment.py +run_name="CTBase" task=rte +split=validation \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=True \
   batch_size=28 \
-  "prompt_tasks=['aqua_rat/raw','math_qa','craigslist_bargains']"
-
-
-python experiment.py +run_name="T0" task=craigslist_bargains +split=validation \
-  num_proc=4 \
-  prompt_experiment_mode=cross_task \
-  prompt_path=prompts/general_fixed_choice.yaml \
-  model_name="bigscience/T0_3B" \
-  evaluation.length_normalization=False \
-  batch_size=12 \
-  "prompt_tasks=['craigslist_bargains']"
-
-
-python experiment.py +run_name="T5" task=craigslist_bargains +split=validation \
-  num_proc=4 \
-  prompt_experiment_mode=cross_task \
-  prompt_path=prompts/general_fixed_choice.yaml \
-  model_name="t5-3b" \
-  evaluation.length_normalization=False \
-  batch_size=6 \
-  "prompt_tasks=['craigslist_bargains']"
+  "prompt_tasks=['BAREBONES','super_glue/wic','BIG-BENCH','zest','super_glue/rte','imdb','app_reviews','yelp','adversarial_qa']"

@@ -13,6 +13,10 @@ class TaskMode(Enum):
     ENTAILMENT = auto()
     QA = auto()
     MCQ = auto()
+    SENTIMENT = auto()
+    SUMMARIZATION = auto()
+    CLOZE = auto()
+    COMPLETION = auto()
 
 
 class FixedChoiceTaskPreprocessor(Registrable):
@@ -46,7 +50,11 @@ class FixedChoiceTaskPreprocessor(Registrable):
             TaskMode.CLASSIFICATION: self.convert_to_classification,
             TaskMode.ENTAILMENT    : self.convert_to_entailment,
             TaskMode.QA            : self.convert_to_qa,
-            TaskMode.MCQ           : self.convert_to_classification
+            TaskMode.MCQ           : self.convert_to_classification,
+            TaskMode.SENTIMENT     : self.convert_to_classification,
+            TaskMode.SUMMARIZATION : self.convert_to_classification,
+            TaskMode.CLOZE         : self.convert_to_classification,
+            TaskMode.COMPLETION    : self.convert_to_classification,
         }
 
         self.mode = TaskMode.CLASSIFICATION
@@ -64,6 +72,18 @@ class FixedChoiceTaskPreprocessor(Registrable):
                 "context" : str
             },
             TaskMode.MCQ           : {
+                "input_sequence": str,
+            },
+            TaskMode.SENTIMENT     : {
+                "input_sequence": str,
+            },
+            TaskMode.SUMMARIZATION : {
+                "input_sequence": str,
+            },
+            TaskMode.CLOZE         : {
+                "input_sequence": str,
+            },
+            TaskMode.COMPLETION: {
                 "input_sequence": str,
             },
         }

@@ -121,3 +121,11 @@ def tokenize_rank_choices(
         "input_len"            : len(inputs_tokenized['input_ids']),
         **inputs_tokenized
     }
+
+
+def create_masked_inputs(
+        columns_required,
+        use_t5_additional_special_tokens=False
+):
+    out = {}
+    
