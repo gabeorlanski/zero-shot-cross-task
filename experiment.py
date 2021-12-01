@@ -87,6 +87,7 @@ def run(cfg: DictConfig):
         if cfg['prompt_path'] is None:
             raise ValueError("Need a path to prompts for cross task")
         preprocessor_args = OmegaConf.to_object(task_cfg['preprocessor'])
+        preprocessor_args['dont_add_extra_text'] = cfg['dont_add_extra_text']
         preprocessor_cls = FixedChoiceTaskPreprocessor.by_name(preprocessor_args.pop('name'))
         preprocessor: FixedChoiceTaskPreprocessor = preprocessor_cls(**preprocessor_args)
 

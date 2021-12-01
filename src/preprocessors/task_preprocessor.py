@@ -30,10 +30,11 @@ class FixedChoiceTaskPreprocessor(Registrable):
             context_template: str,
             choice_str: str = None,
             mcq_choice_str: str = None,
-            is_mcq: bool = False
+            is_mcq: bool = False,
+            dont_add_extra_text: bool = False
     ):
         self.choices = choices
-
+        self.dont_add_extra_text = dont_add_extra_text
         if choice_str is None:
             choice_str = ', '.join(f'"{c}"' for c in choices[:-1])
             choice_str += f' or "{choices[-1]}"'
@@ -83,18 +84,20 @@ class FixedChoiceTaskPreprocessor(Registrable):
             TaskMode.CLOZE         : {
                 "input_sequence": str,
             },
-            TaskMode.COMPLETION: {
+            TaskMode.COMPLETION    : {
                 "input_sequence": str,
             },
         }
 
         # Some tasks take a certain number of inputs so we need a way to map
         # the inputs to these tasks. These templates serve that purpose.
+
         self.classification_template = classification_template
         self.premise_template = premise_template
         self.hypothesis_template = hypothesis_template
         self.context_template = context_template
         self.question_template = question_template
+
 
     @property
     def required_keys_for_mode(self) -> Dict:
@@ -147,6 +150,9 @@ class FixedChoiceTaskPreprocessor(Registrable):
         self._validate_key(output, 'idx', int)
         for key, key_type in self.required_keys_for_mode.items():
             self._validate_key(output, key, key_type)
+
+        if self.dont_add_extra_text:
+            output['domain'] = ""
 
         return output
 

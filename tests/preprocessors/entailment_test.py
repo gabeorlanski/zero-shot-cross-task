@@ -13,16 +13,32 @@ class TestEntailmentPreprocessor:
         set_caching_enabled(True)
 
     @pytest.mark.parametrize("mode", list(TaskMode), ids=list(map(str, TaskMode)))
-    @pytest.mark.parametrize("choice_count", [3,2], ids=['3Choice','2Choice'])
-    def test_call(self, mode, choice_count):
+    @pytest.mark.parametrize("choice_count", [3, 2], ids=['3Choice', '2Choice'])
+    @pytest.mark.parametrize("dont_add_extra_text", [True, False], ids=["NoExtra", "Extra"])
+    def test_call(self, mode, choice_count, dont_add_extra_text):
 
         if choice_count == 3:
-            processor = entailment.ThreeChoiceEntailmentPreprocessor()
+            processor = entailment.ThreeChoiceEntailmentPreprocessor(
+                dont_add_extra_text=dont_add_extra_text)
             ds = load_dataset("anli", split='train_r1[:5]')
         else:
-            processor = entailment.TwoChoiceEntailmentPreprocessor()
+            processor = entailment.TwoChoiceEntailmentPreprocessor(
+                dont_add_extra_text=dont_add_extra_text)
             ds = load_dataset("super_glue", "rte", split='train[:5]')
         processor.set_mode(mode)
+
+        if not dont_add_extra_text:
+            classification_template = "Premise is '{}'. Hypothesis is '{}'."
+            premise_template = "{}"
+            hypothesis_template = "{}"
+            context_template = "Premise is '{}'. Hypothesis is '{}'."
+            question_template = "Does the premise imply the hypothesis?"
+        else:
+            classification_template = "{} {}"
+            premise_template = "{}"
+            hypothesis_template = "{}"
+            context_template = "{} {}"
+            question_template = ""
 
         result_ds = ds.map(  # type:ignore
             processor,
@@ -37,13 +53,13 @@ class TestEntailmentPreprocessor:
             "domain",
             "choice_string"
         }
-        if mode == TaskMode.CLASSIFICATION or mode == TaskMode.MCQ:
-            expected_columns.add("input_sequence")
-        elif mode == TaskMode.QA:
+
+        if mode == TaskMode.QA:
             expected_columns.update(["question", "context"])
         elif mode == TaskMode.ENTAILMENT:
             expected_columns.update(['premise', 'hypothesis'])
-
+        else:
+            expected_columns.add("input_sequence")
         assert set(result_ds.column_names) == expected_columns
         assert len(result_ds) == 5
         result_ds = result_ds.sort('idx')
@@ -62,14 +78,17 @@ class TestEntailmentPreprocessor:
 
             assert result['label'] == expected['label']
 
-            expected_input_seq = f"Premise is '{expected['premise']}'. " \
-                                 f"Hypothesis is '{expected['hypothesis']}'."
-
             if mode == TaskMode.QA:
-                assert result['question'] == "Does the premise imply the hypothesis?"
-                assert result['context'] == expected_input_seq
+                assert result['question'] == question_template
+                assert result['context'] == context_template.format(
+                    expected['premise'],
+                    expected['hypothesis']
+                )
             elif mode == TaskMode.ENTAILMENT:
-                assert result['premise'] == expected['premise']
-                assert result['hypothesis'] == expected['hypothesis']
+                assert result['premise'] == premise_template.format(expected['premise'])
+                assert result['hypothesis'] == hypothesis_template.format(expected['hypothesis'])
             else:
-                assert result['input_sequence'] == expected_input_seq
+                assert result['input_sequence'] == classification_template.format(
+                    expected['premise'],
+                    expected['hypothesis']
+                )

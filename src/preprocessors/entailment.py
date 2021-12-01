@@ -17,7 +17,8 @@ class EntailmentPreprocessor(FixedChoiceTaskPreprocessor):
             num_choices,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str: str = None
+            mcq_choice_str: str = None,
+            dont_add_extra_text: bool = False
     ):
         assert len(choices) == num_choices
         classification_template = (
@@ -40,6 +41,7 @@ class EntailmentPreprocessor(FixedChoiceTaskPreprocessor):
                 question_template
                 or "Does the premise imply the hypothesis?"
         )
+
         super().__init__(
             choices=choices,
             classification_template=classification_template,
@@ -49,8 +51,16 @@ class EntailmentPreprocessor(FixedChoiceTaskPreprocessor):
             context_template=context_template,
             choice_str=choice_str,
             mcq_choice_str=mcq_choice_str,
-            is_mcq=is_mcq
+            is_mcq=is_mcq,
+            dont_add_extra_text=dont_add_extra_text
         )
+
+        if self.dont_add_extra_text:
+            self.classification_template = "{} {}"
+            self.premise_template = "{}"
+            self.hypothesis_template = "{}"
+            self.context_template = "{} {}"
+            self.question_template = ""
 
     def _process_instance(self, data_instance, idx) -> Dict:
         return {
@@ -63,11 +73,12 @@ class EntailmentPreprocessor(FixedChoiceTaskPreprocessor):
         }
 
     def convert_to_classification(self, processed_instance: Dict) -> Dict:
-        out = deepcopy(processed_instance)
-        premise = out.pop('premise')
-        hypothesis = out.pop('hypothesis')
-        out['input_sequence'] = self.classification_template.format(premise, hypothesis)
-        return out
+        premise = processed_instance.pop('premise')
+        hypothesis = processed_instance.pop('hypothesis')
+        processed_instance['input_sequence'] = self.classification_template.format(
+            premise, hypothesis
+        )
+        return processed_instance
 
     def convert_to_entailment(self, processed_instance: Dict) -> Dict:
         processed_instance['premise'] = self.premise_template.format(
@@ -80,12 +91,11 @@ class EntailmentPreprocessor(FixedChoiceTaskPreprocessor):
         return processed_instance
 
     def convert_to_qa(self, processed_instance: Dict) -> Dict:
-        out = deepcopy(processed_instance)
-        premise = out.pop('premise')
-        hypothesis = out.pop('hypothesis')
-        out['context'] = self.context_template.format(premise, hypothesis)
-        out['question'] = self.question_template.format()
-        return out
+        premise = processed_instance.pop('premise')
+        hypothesis = processed_instance.pop('hypothesis')
+        processed_instance['context'] = self.context_template.format(premise, hypothesis)
+        processed_instance['question'] = self.question_template.format()
+        return processed_instance
 
 
 @FixedChoiceTaskPreprocessor.register('three_choice_entailment')
@@ -100,7 +110,8 @@ class ThreeChoiceEntailmentPreprocessor(EntailmentPreprocessor):
             context_template: str = None,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str: str = None
+            mcq_choice_str: str = None,
+            dont_add_extra_text: bool = False
     ):
         if choices is None:
             choices = ["Yes", "Maybe", "No"]
@@ -115,7 +126,8 @@ class ThreeChoiceEntailmentPreprocessor(EntailmentPreprocessor):
             num_choices=3,
             is_mcq=is_mcq,
             choice_str=choice_str,
-            mcq_choice_str=mcq_choice_str
+            mcq_choice_str=mcq_choice_str,
+            dont_add_extra_text=dont_add_extra_text
         )
 
 
@@ -131,7 +143,8 @@ class TwoChoiceEntailmentPreprocessor(EntailmentPreprocessor):
             context_template: str = None,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str: str = None
+            mcq_choice_str: str = None,
+            dont_add_extra_text: bool = False
     ):
         if choices is None:
             choices = ["Yes", "No"]
@@ -145,6 +158,7 @@ class TwoChoiceEntailmentPreprocessor(EntailmentPreprocessor):
             num_choices=2,
             is_mcq=is_mcq,
             choice_str=choice_str,
-            mcq_choice_str=mcq_choice_str
+            mcq_choice_str=mcq_choice_str,
+            dont_add_extra_text=dont_add_extra_text
 
         )

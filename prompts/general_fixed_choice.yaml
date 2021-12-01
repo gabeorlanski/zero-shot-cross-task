@@ -1185,7 +1185,9 @@ templates:
       and the options:
 
       {% for choice in choice_string.split("\n") %}
+      {% if choice.strip()|length > 0 %}
       - {{ choice }}
+      {% endif %}
       {% endfor %}
 
       The correct answer is ||| {{answer_choices[label]}}'
@@ -1208,7 +1210,9 @@ templates:
       {{ input_sequence }}
       Options:
       {% for choice in choice_string.split("\n") %}
+      {% if choice.strip()|length > 0 %}
       - {{ choice }}
+      {% endif %}
       {% endfor %}
       |||
       {{answer_choices[label]}}'
@@ -1227,7 +1231,9 @@ templates:
     id: 5acfaa48-e1b6-44df-8e92-c58b94bff595
     jinja: 'Answer the given question by providing the correct rationale:\n\n{{input_sequence}}\n
     {% for choice in choice_string.split("\n") %}
-        {{ choice }}
+      {% if choice.strip()|length > 0 %}
+      {{ choice }}
+      {% endif %}
     {% endfor %}
     ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata
@@ -1247,7 +1253,9 @@ templates:
         The above question was asked in a Math test. Given the following options, can
         you choose the correct one?
         {% for choice in choice_string.split("\n") %}
+        {% if choice.strip()|length > 0 %}
         - {{ choice }}
+        {% endif %}
         {% endfor %}
         |||
         {{answer_choices[label]}}'
@@ -1269,7 +1277,9 @@ templates:
         {{input_sequence}}
 
         {% for choice in choice_string.split("\n") %}
+        {% if choice.strip()|length > 0 %}
         - {{ choice }}
+        {% endif %}
         {% endfor %}
         ||| {{answer_choices[label]}}'
     metadata: !TemplateMetadata

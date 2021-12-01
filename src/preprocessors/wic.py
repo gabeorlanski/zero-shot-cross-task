@@ -18,6 +18,7 @@ class WICPreprocessor(FixedChoiceTaskPreprocessor):
             is_mcq: bool = False,
             choice_str: str = None,
             mcq_choice_str: str = None,
+            dont_add_extra_text: bool = False
     ):
         choices = choices or ["No", "Yes"]
         assert len(choices) == 2
@@ -53,8 +54,15 @@ class WICPreprocessor(FixedChoiceTaskPreprocessor):
             context_template=context_template,
             choice_str=choice_str,
             mcq_choice_str=mcq_choice_str,
-            is_mcq=is_mcq
+            is_mcq=is_mcq,
+            dont_add_extra_text=dont_add_extra_text
         )
+        if self.dont_add_extra_text:
+            self.classification_template = "{} {} {}"
+            self.premise_template = "{} {}"
+            self.hypothesis_template = "{}"
+            self.context_template = "{} {}"
+            self.question_template = "{}"
 
     def _process_instance(self, data_instance, idx) -> Dict:
         return {
@@ -68,28 +76,25 @@ class WICPreprocessor(FixedChoiceTaskPreprocessor):
         }
 
     def convert_to_classification(self, processed_instance: Dict) -> Dict:
-        out = deepcopy(processed_instance)
-        out['input_sequence'] = self.classification_template.format(
-            out.pop('sentence_1'), out.pop('sentence_2'), out.pop('word')
+        processed_instance['input_sequence'] = self.classification_template.format(
+            processed_instance.pop('sentence_1'), processed_instance.pop('sentence_2'), processed_instance.pop('word')
         )
-        return out
+        return processed_instance
 
     def convert_to_entailment(self, processed_instance: Dict) -> Dict:
-        out = deepcopy(processed_instance)
-        out['premise'] = self.premise_template.format(
-            out.pop('sentence_1'), out.pop('sentence_2')
+        processed_instance['premise'] = self.premise_template.format(
+            processed_instance.pop('sentence_1'), processed_instance.pop('sentence_2')
         )
-        out['hypothesis'] = self.hypothesis_template.format(
-            out.pop('word')
+        processed_instance['hypothesis'] = self.hypothesis_template.format(
+            processed_instance.pop('word')
         )
-        return out
+        return processed_instance
 
     def convert_to_qa(self, processed_instance: Dict) -> Dict:
-        out = deepcopy(processed_instance)
-        out['context'] = self.context_template.format(
-            out.pop('sentence_1'), out.pop('sentence_2')
+        processed_instance['context'] = self.context_template.format(
+            processed_instance.pop('sentence_1'), processed_instance.pop('sentence_2')
         )
-        out['question'] = self.question_template.format(
-            out.pop('word')
+        processed_instance['question'] = self.question_template.format(
+            processed_instance.pop('word')
         )
-        return out
+        return processed_instance

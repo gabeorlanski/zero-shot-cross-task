@@ -36,13 +36,12 @@ class TestCraigslistBargainsPreprocessor:
             "domain",
             "choice_string"
         }
-        if mode == TaskMode.CLASSIFICATION or mode == TaskMode.MCQ:
-            expected_columns.add("input_sequence")
-        elif mode == TaskMode.QA:
+        if mode == TaskMode.QA:
             expected_columns.update(["question", "context"])
         elif mode == TaskMode.ENTAILMENT:
             expected_columns.update(['premise', 'hypothesis'])
-
+        else:
+            expected_columns.add("input_sequence")
         assert set(result_ds.column_names) == expected_columns
         assert len(result_ds) == 5
         result_ds = result_ds.sort('idx')
@@ -77,7 +76,7 @@ class TestCraigslistBargainsPreprocessor:
             )
 
             input_key = "input_sequence"
-            if mode == TaskMode.ENTAILMENT :
+            if mode == TaskMode.ENTAILMENT:
                 input_key = "premise"
             elif mode == TaskMode.QA:
                 input_key = "context"
@@ -129,3 +128,42 @@ class TestCraigslistBargainsPreprocessor:
             final_price = -1
         assert label == expected
         assert final == final_price
+
+    @pytest.mark.parametrize("mode", list(TaskMode), ids=list(map(str, TaskMode)))
+    def test_no_extra_text(self, mode):
+        processor = craigslist_bargains.CraigslistBargainsPreprocessor(
+            dont_add_extra_text=True
+        )
+        processor.set_mode(mode)
+
+        ds = load_dataset("craigslist_bargains", split='train[:5]')
+
+        result_ds = ds.map(  # type:ignore
+            processor,
+            with_indices=True,
+            remove_columns=ds.column_names
+        )
+        result_ds = result_ds.sort('idx')
+
+        def add_idx(ex, _idx):
+            ex['idx'] = _idx
+            return ex
+
+        ds = ds.map(
+            add_idx,
+            with_indices=True,
+        ).sort('idx')
+
+        for idx, (result, expected) in enumerate(zip(result_ds, ds)):
+            if mode == TaskMode.QA:
+                assert result['question'] == ""
+                key = 'question'
+            elif mode == TaskMode.ENTAILMENT:
+                assert result['hypothesis'] == ""
+                key = 'premise'
+            else:
+                key = 'input_sequence'
+
+            assert str(result['buyer_target']) not in result[key]
+            assert str(result['seller_target']) not in result[key]
+            assert str(result['final_price']) not in result[key]

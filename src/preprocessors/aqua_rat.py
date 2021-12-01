@@ -13,15 +13,18 @@ class AquaRatPreprocessor(FixedChoiceTaskPreprocessor):
             use_lowercase_choices: bool = False,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str: str = None
+            mcq_choice_str: str = None,
+            keep_choices_in_answers: bool = False,
+            dont_add_extra_text: bool = False,
     ):
         self.use_lowercase_choices = use_lowercase_choices
+        self.keep_choices_in_answers = keep_choices_in_answers
         if self.use_lowercase_choices:
             choices = ["a", "b", "c", "d", "e"]
         else:
             choices = ["A", "B", "C", "D", "E"]
 
-        classification_template = "{}"
+        classification_template = "{} Possible answers: {}"
         premise_template = "{}"
         hypothesis_template = "Choices are: {}"
         context_template = "Choices are: {}"
@@ -36,10 +39,18 @@ class AquaRatPreprocessor(FixedChoiceTaskPreprocessor):
             context_template=context_template,
             choice_str=choice_str,
             mcq_choice_str=mcq_choice_str,
-            is_mcq=is_mcq
+            is_mcq=is_mcq,
+            dont_add_extra_text=dont_add_extra_text
         )
 
         self._correct_to_int = {k: i for i, k in enumerate(["A", "B", "C", "D", "E"])}
+
+        if self.dont_add_extra_text:
+            self.classification_template = "{} {}"
+            self.premise_template = "{}"
+            self.hypothesis_template = "{}"
+            self.context_template = "{}"
+            self.question_template = "{}"
 
     def _process_instance(self, data_instance, idx) -> Dict:
         output_dict = {
@@ -51,35 +62,60 @@ class AquaRatPreprocessor(FixedChoiceTaskPreprocessor):
         }
 
         choice_strs = []
+        mcq_choices = []
 
         for choice in data_instance['options']:
+            choice_letter, answer = choice.split(")", 1)
 
             if self.use_lowercase_choices:
-                choice_letter, answer = choice.split(")")
-                choice_str = f"{choice_letter.lower()}) {answer}"
+                mcq_choice_str = f"{choice_letter.lower()}) {answer}"
             else:
-                choice_str = choice.replace(")", ") ")
+                mcq_choice_str = choice.replace(")", ") ", 1)
+            choice_str = answer.strip()
             choice_strs.append(choice_str)
+            mcq_choices.append(mcq_choice_str)
 
-        output_dict['choice_string'] = "\n".join(choice_strs)
+        output_dict['possible_answers'] = ", ".join(choice_strs)
+        if self.is_mcq:
+            output_dict['choice_string'] = '\n'.join(mcq_choices)
+        elif self.keep_choices_in_answers:
+            output_dict['possible_answers'] = ', '.join(mcq_choices)
+
         return output_dict
 
     def convert_to_classification(self, processed_instance: Dict) -> Dict:
-        processed_instance['input_sequence'] = processed_instance.pop('question')
+
+        processed_instance['input_sequence'] = self.classification_template.format(
+            processed_instance.pop('question'), processed_instance.pop('possible_answers')
+        )
+
         return processed_instance
 
     def convert_to_entailment(self, processed_instance: Dict) -> Dict:
 
-        processed_instance['hypothesis'] = self.hypothesis_template.format(
-            processed_instance.pop('choice_string')
-        )
-        processed_instance['premise'] = self.premise_template.format(
-            processed_instance.pop('question')
-        )
+        if self.dont_add_extra_text:
+            hyp_str = processed_instance.pop('possible_answers')
+            premise_str = processed_instance.pop('question')
+
+        else:
+            hyp_str = self.hypothesis_template.format(
+                processed_instance.pop('possible_answers')
+            )
+            premise_str = self.premise_template.format(
+                processed_instance.pop('question')
+            )
+
+        processed_instance['hypothesis'] = hyp_str
+        processed_instance['premise'] = premise_str
         return processed_instance
 
     def convert_to_qa(self, processed_instance: Dict) -> Dict:
         processed_instance['question'] = processed_instance.pop('question')
-        processed_instance['context'] = self.context_template.format(
-            processed_instance.pop('choice_string'))
+        if self.dont_add_extra_text:
+            context_str = processed_instance.pop('possible_answers')
+        else:
+            context_str = self.context_template.format(
+                processed_instance.pop('possible_answers')
+            )
+        processed_instance['context'] = context_str
         return processed_instance

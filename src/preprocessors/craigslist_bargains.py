@@ -21,7 +21,8 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             use_constant_domain: bool = False,
             is_mcq: bool = False,
             choice_str: str = None,
-            mcq_choice_str: str = None
+            mcq_choice_str: str = None,
+            dont_add_extra_text: bool = False
     ):
         self.question_str = "Who won the negotiation?"
 
@@ -62,7 +63,8 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
             context_template=context_template,
             choice_str=choice_str,
             mcq_choice_str=mcq_choice_str,
-            is_mcq=is_mcq
+            is_mcq=is_mcq,
+            dont_add_extra_text=dont_add_extra_text
         )
         self.add_speaker_prefix = add_speaker_prefix
         self.fair_trade_tol = fair_trade_tol
@@ -109,6 +111,7 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         output_dict['label'] = self.label_to_int[label]
 
         output_dict['additional_input_1'] = listing_price
+
         return output_dict
 
     def _get_label(self, intents, prices, targets):
@@ -150,33 +153,42 @@ class CraigslistBargainsPreprocessor(FixedChoiceTaskPreprocessor):
         return label, final_price, buyer_target, seller_target
 
     def convert_to_classification(self, processed_instance: Dict) -> Dict:
-        processed_instance['input_sequence'] = self.classification_template.format(
-            processed_instance.pop('buyer_target'),
-            processed_instance.pop('seller_target'),
-            processed_instance.pop('final_price'),
-            processed_instance['input_sequence']
-        )
+
+        if not self.dont_add_extra_text:
+            processed_instance['input_sequence'] = self.classification_template.format(
+                processed_instance.pop('buyer_target'),
+                processed_instance.pop('seller_target'),
+                processed_instance.pop('final_price'),
+                processed_instance['input_sequence']
+            )
         return processed_instance
 
     def convert_to_entailment(self, processed_instance: Dict) -> Dict:
+        hyp_str = ""
+        premise_str = processed_instance.pop('input_sequence')
+        if not self.dont_add_extra_text:
+            hyp_str = self.hypothesis_template.format(
+                processed_instance.pop('buyer_target'),
+                processed_instance.pop('seller_target'),
+                processed_instance.pop('final_price'),
+            )
+            premise_str = self.premise_template.format(premise_str)
+        processed_instance['premise'] = premise_str
+        processed_instance['hypothesis'] = hyp_str
 
-        out = deepcopy(processed_instance)
-        out['hypothesis'] = self.hypothesis_template.format(
-            out.pop('buyer_target'),
-            out.pop('seller_target'),
-            out.pop('final_price'),
-        )
-        out['premise'] = self.premise_template.format(out.pop('input_sequence'))
-
-        return out
+        return processed_instance
 
     def convert_to_qa(self, processed_instance: Dict) -> Dict:
 
-        out = deepcopy(processed_instance)
-        out['question'] = self.question_template.format(
-            out.pop('buyer_target'),
-            out.pop('seller_target'),
-            out.pop('final_price'),
-        )
-        out['context'] = self.context_template.format(out.pop('input_sequence'))
-        return out
+        question_str = ""
+        context_str = processed_instance.pop('input_sequence')
+        if not self.dont_add_extra_text:
+            question_str = self.question_template.format(
+                processed_instance.pop('buyer_target'),
+                processed_instance.pop('seller_target'),
+                processed_instance.pop('final_price'),
+            )
+            context_str = self.context_template.format(context_str)
+        processed_instance['question'] = question_str
+        processed_instance['context'] = context_str
+        return processed_instance
