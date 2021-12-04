@@ -1,6 +1,11 @@
 defaults:
   - _self_
-  - ../general_prompts@general_prompts: three_choice_entailment
+
+default_answer_choices:
+  - Yes
+  - Maybe
+  - No
+
 name: cb
 verbose_name: CommitmentBank
 dir_name: cb

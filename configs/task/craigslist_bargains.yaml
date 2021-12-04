@@ -1,6 +1,12 @@
 defaults:
   - _self_
 
+default_answer_choices:
+  - Seller
+  - Buyer
+  - Neither
+  - Unknown
+
 name: craigslist_bargains
 dir_name: craigslist_bargains
 category:

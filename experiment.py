@@ -103,9 +103,15 @@ def run(cfg: DictConfig):
         )
 
     else:
+        add_default_choices = cfg['add_default_choices']
         prompts_to_use = load_prompts(
-            prompt_task, categories, prompt_filter_kwargs=cfg['prompt_filter'],
-            blacklist=task_cfg.get('prompt_blacklist', None)
+            prompt_task,
+            categories,
+            prompt_filter_kwargs=cfg['prompt_filter'],
+            blacklist=task_cfg.get('prompt_blacklist', None),
+            default_choices=task_cfg['default_answer_choices'] if add_default_choices else None,
+            target_key=task_cfg['target_key'] if add_default_choices else None,
+
         )
 
     if cfg["prompt_count"] is not None and cfg["prompt_count"] > 0:

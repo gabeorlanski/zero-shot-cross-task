@@ -1,6 +1,14 @@
 defaults:
   - _self_
 
+
+default_answer_choices:
+  - A
+  - B
+  - C
+  - D
+  - E
+target_key: "correct"
 name: raw
 override_name: aqua_rat
 verbose_name: AQuA

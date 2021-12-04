@@ -1,6 +1,10 @@
 defaults:
   - _self_
 
+default_answer_choices:
+  - No
+  - Yes
+
 name: wic
 verbose_name: WordsinContext
 parent_dataset: super_glue

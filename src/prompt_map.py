@@ -116,9 +116,18 @@ def load_prompts(
         prompt_task: str,
         categories: List,
         prompt_filter_kwargs: Optional[Dict] = None,
-        blacklist: Optional[List[str]] = None
+        blacklist: Optional[List[str]] = None,
+        default_choices: Optional[List[str]] = None,
+        target_key: Optional[str] = None
 ):
+    if (
+            (default_choices is not None and target_key is None)
+            or (default_choices is None and target_key is not None)
+    ):
+        raise ValueError("Must have default choices AND target_key")
+
     task_prompt_templates = DatasetTemplates(prompt_task)
+
     prompt_filter_kwargs = prompt_filter_kwargs or {"name_list": [], "choice_list": []}
     logger.info(f"Template Names for {prompt_task}: {task_prompt_templates.all_template_names}")
 
@@ -127,6 +136,17 @@ def load_prompts(
         if blacklist and prompt.name in blacklist:
             logger.info(f"Skipping {prompt.name}, in blacklist")
             continue
+
+        if prompt.get_fixed_answer_choices_list() is None:
+            if default_choices is None or prompt.answer_choices is None or target_key is None:
+                logger.info(f"Skipping {prompt.name}, does not have fixed choices")
+                continue
+
+            prompt.answer_choices = " ||| ".join(default_choices)
+            prompt_str, _ = prompt.jinja.split("|||")
+            target_str = "{{ " + target_key + " }}"
+            prompt.jinja = f"{prompt_str} ||| {target_str}"
+
         # Add the group name and the prompt name to the list of prompts to use.
         prompts_to_use.append(
             (DEFAULT_PROMPT_GROUP, prompt, {
@@ -296,7 +316,15 @@ def load_generalized_prompts(
                 prompt.choice_string = choice_str
                 if prompt.metadata.is_mcq:
                     prompt.choice_string = mcq_choice_str
-        elif prompt.choice_string is not None:
+        else:
+            if prompt.name == "Sentiment with choices":
+                print("??")
+            if prompt.choice_string is None:
+                logger.info(f"No original choices, skipping {prompt.name}")
+                continue
+            if not prompt.metadata.choices_in_prompt:
+                logger.info(f"Skipping {prompt.name}, choices not in prompt")
+                continue
             prompt.jinja = choice_str_regex.sub(prompt.choice_string, prompt.jinja)
 
         # CB and Anli use the same prompts, so they need to be marked as

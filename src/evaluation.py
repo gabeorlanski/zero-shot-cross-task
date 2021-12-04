@@ -134,6 +134,7 @@ def generate_predictions_choices(
 
             if length_normalize:
                 scores /= choice_mask.sum(-1)
+
             dataset_scores.extend(scores.tolist())
 
             if (batch_num + 1) % 10 == 0:

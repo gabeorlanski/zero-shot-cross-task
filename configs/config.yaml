@@ -20,6 +20,7 @@ prompt_path: null
 prompt_tasks: null
 original_choice_str: False
 dont_add_extra_text: False
+add_default_choices: False
 
 group:
   override_name: null

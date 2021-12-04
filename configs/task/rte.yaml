@@ -1,6 +1,10 @@
 defaults:
   - _self_
 
+default_answer_choices:
+  - yes
+  - no
+
 name: rte
 verbose_name: RecognizingTextualEntailment
 parent_dataset: super_glue
