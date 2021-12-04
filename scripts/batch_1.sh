@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run the experiments
-python experiment.py +run_name="CTBase" task=aqua +split=validation \
+python experiment.py +run_name="CTOriginalChoices" task=aqua +split=validation \
   num_proc=4 \
   prompt_experiment_mode=cross_task \
   prompt_path=prompts/general_fixed_choice.yaml \
