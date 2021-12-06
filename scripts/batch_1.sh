@@ -7,4 +7,5 @@ python experiment.py +run_name="T0" task=craigslist_bargains +split=validation \
   model_name="bigscience/T0_3B" \
   evaluation.length_normalization=False \
   batch_size=12 \
-  dont_add_extra_text=True
+  dont_add_extra_text=True \
+  prompt_tasks=['craigslist_bargains']
