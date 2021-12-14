@@ -1,0 +1,106 @@
+,name,d4name,d4group,metric,split,val,exp,sizeorder,paper,convention
+0,HellaSwag,hellaswag,,acc,dev,67.4,GPT3 (6.7B),5,GPT3,story_completion
+1,HellaSwag,hellaswag,,acc,dev,70.9,GPT3 (13B),6,GPT3,story_completion
+2,HellaSwag,hellaswag,,acc,dev,78.9,GPT3 (175B),7,GPT3,story_completion
+3,LAMBADA,lambada,,acc,test,70.3,GPT3 (6.7B),5,GPT3,story_completion
+4,LAMBADA,lambada,,acc,test,72.5,GPT3 (13B),6,GPT3,story_completion
+5,LAMBADA,lambada,,acc,test,76.2,GPT3 (175B),7,GPT3,story_completion
+6,LAMBADA,,,ppl,test,4.0,GPT3 (6.7B),5,GPT3,
+7,LAMBADA,,,ppl,test,3.56,GPT3 (13B),6,GPT3,
+8,LAMBADA,,,ppl,test,3.0,GPT3 (175B),7,GPT3,
+9,StoryCloze,story_cloze,,acc,test,77.7,GPT3 (6.7B),5,GPT3,story_completion
+10,StoryCloze,story_cloze,,acc,test,79.5,GPT3 (13B),6,GPT3,story_completion
+11,StoryCloze,story_cloze,,acc,test,83.2,GPT3 (175B),7,GPT3,story_completion
+12,NQs,nq,,acc,test,5.79,GPT3 (6.7B),5,GPT3,not found
+13,NQs,nq,,acc,test,7.84,GPT3 (13B),6,GPT3,not found
+14,NQs,nq,,acc,test,14.6,GPT3 (175B),7,GPT3,not found
+15,TriviaQA,rc,,acc,dev,38.7,GPT3 (6.7B),5,GPT3,QA_closed_book
+16,TriviaQA,rc,,acc,dev,41.8,GPT3 (13B),6,GPT3,QA_closed_book
+17,TriviaQA,rc,,acc,dev,64.3,GPT3 (175B),7,GPT3,QA_closed_book
+18,WebQs,,,acc,test,7.73,GPT3 (6.7B),5,GPT3,
+19,WebQs,,,acc,test,8.22,GPT3 (13B),6,GPT3,
+20,WebQs,,,acc,test,14.4,GPT3 (175B),7,GPT3,
+21,Winograd,,,acc,test,85.7,GPT3 (6.7B),5,GPT3,
+22,Winograd,,,acc,test,87.9,GPT3 (13B),6,GPT3,
+23,Winograd,,,acc,test,88.3,GPT3 (175B),7,GPT3,
+24,Winogrande,winogrande_xl,,acc,dev,64.5,GPT3 (6.7B),5,GPT3,coreference
+25,Winogrande,winogrande_xl,,acc,dev,67.9,GPT3 (13B),6,GPT3,coreference
+26,Winogrande,winogrande_xl,,acc,dev,70.2,GPT3 (175B),7,GPT3,coreference
+27,PIQA,piqa,,acc,dev,78.0,GPT3 (6.7B),5,GPT3,QA_multiple_choice
+28,PIQA,piqa,,acc,dev,78.5,GPT3 (13B),6,GPT3,QA_multiple_choice
+29,PIQA,piqa,,acc,dev,81.0,GPT3 (175B),7,GPT3,QA_multiple_choice
+30,ARC (Challenge),ARC_Challenge,,acc,test,41.4,GPT3 (6.7B),5,GPT3,QA_closed_book
+31,ARC (Challenge),ARC_Challenge,,acc,test,43.7,GPT3 (13B),6,GPT3,QA_closed_book
+32,ARC (Challenge),ARC_Challenge,,acc,test,51.4,GPT3 (175B),7,GPT3,QA_closed_book
+33,ARC (Easy),ARC_Easy,,acc,test,60.2,GPT3 (6.7B),5,GPT3,QA_closed_book
+34,ARC (Easy),ARC_Easy,,acc,test,63.8,GPT3 (13B),6,GPT3,QA_closed_book
+35,ARC (Easy),ARC_Easy,,acc,test,68.8,GPT3 (175B),7,GPT3,QA_closed_book
+36,OpenBookQA,,,acc,test,50.4,GPT3 (6.7B),5,GPT3,
+37,OpenBookQA,,,acc,test,55.6,GPT3 (13B),6,GPT3,
+38,OpenBookQA,,,acc,test,57.6,GPT3 (175B),7,GPT3,
+39,Quac,quac,,f1,dev,36.1,GPT3 (6.7B),5,GPT3,QA_extractive
+40,Quac,quac,,f1,dev,38.4,GPT3 (13B),6,GPT3,QA_extractive
+41,Quac,quac,,f1,dev,41.5,GPT3 (175B),7,GPT3,QA_extractive
+42,RACE-h,,,acc,test,44.1,GPT3 (6.7B),5,GPT3,
+43,RACE-h,,,acc,test,44.6,GPT3 (13B),6,GPT3,
+44,RACE-h,,,acc,test,45.5,GPT3 (175B),7,GPT3,
+45,RACE-m,,,acc,test,54.4,GPT3 (6.7B),5,GPT3,
+46,RACE-m,,,acc,test,56.7,GPT3 (13B),6,GPT3,
+47,RACE-m,,,acc,test,58.4,GPT3 (175B),7,GPT3,
+48,SQuADv2,squad_v2,,em,dev,45.4,GPT3 (6.7B),5,GPT3,QA_extractive
+49,SQuADv2,squad_v2,,em,dev,49.0,GPT3 (13B),6,GPT3,QA_extractive
+50,SQuADv2,squad_v2,,em,dev,52.6,GPT3 (175B),7,GPT3,QA_extractive
+51,SQuADv2,squad_v2,,f1,dev,52.7,GPT3 (6.7B),5,GPT3,QA_extractive
+52,SQuADv2,squad_v2,,f1,dev,56.3,GPT3 (13B),6,GPT3,QA_extractive
+53,SQuADv2,squad_v2,,f1,dev,59.5,GPT3 (175B),7,GPT3,QA_extractive
+54,CoQA,,,f1,dev,72.8,GPT3 (6.7B),5,GPT3,
+55,CoQA,,,f1,dev,76.3,GPT3 (13B),6,GPT3,
+56,CoQA,,,f1,dev,81.5,GPT3 (175B),7,GPT3,
+57,DROP,,,f1,dev,17.0,GPT3 (6.7B),5,GPT3,
+58,DROP,,,f1,dev,24.0,GPT3 (13B),6,GPT3,
+59,DROP,,,f1,dev,23.6,GPT3 (175B),7,GPT3,
+60,BoolQ,boolq,,acc,dev,65.4,GPT3 (6.7B),5,GPT3,QA_multiple_choice
+61,BoolQ,boolq,,acc,dev,66.2,GPT3 (13B),6,GPT3,QA_multiple_choice
+62,BoolQ,boolq,,acc,dev,60.5,GPT3 (175B),7,GPT3,QA_multiple_choice
+63,CB,cb,,acc,dev,28.6,GPT3 (6.7B),5,GPT3,NLI
+64,CB,cb,,acc,dev,19.6,GPT3 (13B),6,GPT3,NLI
+65,CB,cb,,acc,dev,46.4,GPT3 (175B),7,GPT3,NLI
+66,CB,,,f1,dev,25.1,GPT3 (6.7B),5,GPT3,
+67,CB,,,f1,dev,20.3,GPT3 (13B),6,GPT3,
+68,CB,,,f1,dev,42.8,GPT3 (175B),7,GPT3,
+69,Copa,copa,,acc,dev,80.0,GPT3 (6.7B),5,GPT3,QA_multiple_choice
+70,Copa,copa,,acc,dev,84.0,GPT3 (13B),6,GPT3,QA_multiple_choice
+71,Copa,copa,,acc,dev,91.0,GPT3 (175B),7,GPT3,QA_multiple_choice
+72,RTE,rte,,acc,dev,55.2,GPT3 (6.7B),5,GPT3,NLI
+73,RTE,rte,,acc,dev,62.8,GPT3 (13B),6,GPT3,NLI
+74,RTE,rte,,acc,dev,63.5,GPT3 (175B),7,GPT3,NLI
+75,WiC,wic,,acc,dev,0.0,GPT3 (6.7B),5,GPT3,word_sense_disambiguation
+76,WiC,wic,,acc,dev,0.0,GPT3 (13B),6,GPT3,word_sense_disambiguation
+77,WiC,wic,,acc,dev,0.0,GPT3 (175B),7,GPT3,word_sense_disambiguation
+78,WSC,wsc.fixed,,acc,dev,60.6,GPT3 (6.7B),5,GPT3,coreference
+79,WSC,wsc.fixed,,acc,dev,64.4,GPT3 (13B),6,GPT3,coreference
+80,WSC,wsc.fixed,,acc,dev,65.4,GPT3 (175B),7,GPT3,coreference
+81,MultiRC,multirc,,acc,dev,18.4,GPT3 (6.7B),5,GPT3,QA_multiple_choice
+82,MultiRC,multirc,,acc,dev,24.2,GPT3 (13B),6,GPT3,QA_multiple_choice
+83,MultiRC,multirc,,acc,dev,27.6,GPT3 (175B),7,GPT3,QA_multiple_choice
+84,MultiRC,,,f1a,dev,64.5,GPT3 (6.7B),5,GPT3,
+85,MultiRC,,,f1a,dev,71.4,GPT3 (13B),6,GPT3,
+86,MultiRC,,,f1a,dev,72.9,GPT3 (175B),7,GPT3,
+87,ReCoRD,record,,acc,dev,88.6,GPT3 (6.7B),5,GPT3,QA_extractive
+88,ReCoRD,record,,acc,dev,89.0,GPT3 (13B),6,GPT3,QA_extractive
+89,ReCoRD,record,,acc,dev,90.2,GPT3 (175B),7,GPT3,QA_extractive
+90,ReCoRD,,,f1,dev,89.5,GPT3 (6.7B),5,GPT3,
+91,ReCoRD,,,f1,dev,90.4,GPT3 (13B),6,GPT3,
+92,ReCoRD,,,f1,dev,91.0,GPT3 (175B),7,GPT3,
+93,SuperGLUE,,,average,dev,52.3,GPT3 (6.7B),5,GPT3,
+94,SuperGLUE,,,average,dev,54.4,GPT3 (13B),6,GPT3,
+95,SuperGLUE,,,average,dev,58.2,GPT3 (175B),7,GPT3,
+96,ANLI R1,anli,r1,acc,test,32.3,GPT3 (6.7B),5,GPT3,NLI
+97,ANLI R1,anli,r1,acc,test,33.2,GPT3 (13B),6,GPT3,NLI
+98,ANLI R1,anli,r1,acc,test,34.6,GPT3 (175B),7,GPT3,NLI
+99,ANLI R2,anli,r2,acc,test,33.5,GPT3 (6.7B),5,GPT3,NLI
+100,ANLI R2,anli,r2,acc,test,33.5,GPT3 (13B),6,GPT3,NLI
+101,ANLI R2,anli,r2,acc,test,35.4,GPT3 (175B),7,GPT3,NLI
+102,ANLI R3,anli,r3,acc,test,34.8,GPT3 (6.7B),5,GPT3,NLI
+103,ANLI R3,anli,r3,acc,test,34.4,GPT3 (13B),6,GPT3,NLI
+104,ANLI R3,anli,r3,acc,test,34.5,GPT3 (175B),7,GPT3,NLI

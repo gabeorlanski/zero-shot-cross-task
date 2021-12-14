@@ -43,7 +43,7 @@ def download_wandb_runs():
         for k in summary_keys:
             f.write(k + '\n')
 
-    runs_df.to_csv(run_csv_path)
+    runs_df.to_csv(run_csv_path, index=False)
 
 
 if __name__ == '__main__':
