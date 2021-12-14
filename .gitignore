@@ -130,8 +130,11 @@ outputs/
 logs/
 wandb_api
 
-data/summary_keys.txt
-
-data/
 data/*.csv
-^data/runs.csv
+!data/runs.csv
+!data/t0_data.csv
+!data/GPT3_align.csv
+!data/entire_set.csv
+data/cross_task_f1_table.text
+
+data/cross_task_accuracy_table.text

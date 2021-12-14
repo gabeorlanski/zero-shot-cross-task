@@ -256,7 +256,10 @@ def create_visualization_data():
             'f1'
         )))
 
-    cross_task_data.to_csv(PROJECT_ROOT.joinpath('data', 'cross_task.csv'), index=False)
+    get_crosstask_data(cross_task_data.copy(), "accuracy").to_csv(
+        PROJECT_ROOT.joinpath('data', 'cross_task.csv'),
+        index=False
+    )
 
     diff_df = get_diff_crosstask_with_text(
         runs_df[runs_df.run_name.isin(['CTBase', 'CTNoText'])].copy()
