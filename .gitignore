@@ -132,4 +132,6 @@ wandb_api
 
 data/summary_keys.txt
 
-data/runs.csv
+data/
+data/*.csv
+^data/runs.csv
