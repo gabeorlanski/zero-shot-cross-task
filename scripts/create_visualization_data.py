@@ -5,7 +5,7 @@ from transformers import AutoTokenizer
 import pandas as pd
 from promptsource.templates import Template
 import yaml
-
+import json
 from src.common.log_util import prepare_global_logging
 from src.preprocessors.empty import EmptyPreprocessor
 
@@ -90,9 +90,10 @@ def make_latex_table(df):
     return '\n'.join(out)
 
 
-def get_rank(df):
-    df['group'] = df['group'].apply(lambda g: GROUP_NAME_MAPPING[g])
-    df['prompt_task'] = df['prompt_task'].apply(lambda g: PROMPT_TASK_NAME_MAPPING[g])
+def get_rank(df, dont_update_names=False):
+    if not dont_update_names:
+        df['group'] = df['group'].apply(lambda g: GROUP_NAME_MAPPING[g])
+        df['prompt_task'] = df['prompt_task'].apply(lambda g: PROMPT_TASK_NAME_MAPPING[g])
     df = df.drop(df[df['prompt_task'] == "BIG-BENCH"].index)
     df.loc[df['prompt_task'] == 'NumerSense', 'task_mode'] = "COMPLETION"
     df[f'accuracy_rank'] = df.groupby('group')["accuracy"].rank(ascending=False)
@@ -109,17 +110,49 @@ def add_prompt_length(df):
     )['templates']
 
     data_point = processor({}, 0)
-    prompt_tokens = {
-        prompt.id: tokenizer(prompt.apply(data_point)[0], add_special_tokens=False)['input_ids']
+    prompt_token_ids = {
+        prompt.id: ['input_ids']
         for prompt in all_templates.values()
     }
+    prompt_tokens = {}
+    for k, prompt in all_templates.items():
+        str_tokens = []
+        offset = 0
+        prev_had_wordpiece = False
+        prev_is_wordpiece = False
+        tokens = tokenizer.tokenize(prompt.apply(data_point)[0], add_special_tokens=False)
+        prompt_token_ids[k] = tokenizer.convert_tokens_to_ids(tokens)
+        for i, t in enumerate(tokens):
+            if t.startswith("▁"):
+                if t == "▁":
+                    offset += 1
+                    prev_is_wordpiece = True
+                    prev_had_wordpiece = True
+                    continue
+                else:
+                    str_tokens.append(t.replace("▁", ""))
+            else:
+                if i == 0 or len(str_tokens) == 0 or prev_is_wordpiece:
+                    str_tokens.append(t)
+                elif "##" in str_tokens[i - offset - 1] or prev_had_wordpiece:
+                    str_tokens.append("##" + t)
+                else:
+                    str_tokens.append(t)
+
+            prev_had_wordpiece = t.startswith("▁") if not prev_is_wordpiece else True
+            prev_is_wordpiece = False
+        prompt_tokens[k] = str_tokens
+
+    with PROJECT_ROOT.joinpath('data', 'prompt_tokens.json').open('w', encoding='utf-8') as f:
+
+        json.dump(prompt_tokens, f, indent=True)
     unigram_corr_df = []
     bigram_corr_df = []
     trigram_corr_df = []
 
     median_rank = df.groupby('prompt_id').median()
 
-    for prompt_id, tokens in prompt_tokens.items():
+    for prompt_id, tokens in prompt_token_ids.items():
         try:
             record = {
                 "prompt_id": prompt_id,
@@ -149,7 +182,7 @@ def add_prompt_length(df):
     bigram_corr_df = pd.DataFrame.from_records(bigram_corr_df).fillna(0)
     trigram_corr_df = pd.DataFrame.from_records(trigram_corr_df).fillna(0)
 
-    df['prompt_tokens'] = df['prompt_id'].apply(lambda x: len(prompt_tokens[x]))
+    df['prompt_tokens'] = df['prompt_id'].apply(lambda x: len(prompt_token_ids[x]))
 
     return df
 
@@ -181,29 +214,18 @@ def get_diff_crosstask_with_text(df):
     df = df.drop(df[df['prompt_task'] == "BIG-BENCH"].index)
     col_save = [
         'prompt_id', 'group', 'run_name', 'prompt_task', 'accuracy', 'f1', 'choices_in_prompt',
-        'training_task'
+        'training_task', 'name'
     ]
     df = df[col_save]
 
-    base = df[df['run_name'] == 'CTBase'].copy()
+    base = get_rank(df[df['run_name'] == 'CTBase'].copy(),True)
     base['key'] = base['prompt_id'] + "|" + base['group'] + "|" + base['prompt_task']
-    no_text = df[df['run_name'] == 'CTNoText'].copy()
+    no_text = get_rank(df[df['run_name'] == 'CTNoText'].copy(),True)
     no_text['key'] = no_text['prompt_id'] + "|" + no_text['group'] + "|" + no_text['prompt_task']
 
-    joined = base.set_index('key').join(
-        no_text.set_index('key'), rsuffix='_notext'
-    ).drop(['prompt_id_notext', 'group_notext', 'prompt_task_notext', 'run_name_notext'], axis=1)
+    joined = base.append(no_text)
 
-    joined['acc_pct_changed'] = (
-            (joined['accuracy'] - joined['accuracy_notext'])
-            / joined['accuracy_notext']
-    )
-    joined['f1_pct_changed'] = (
-            (joined['f1'] - joined['f1_notext'])
-            / joined['f1_notext']
-    )
-
-    return df
+    return joined
 
 
 def create_visualization_data():
@@ -239,10 +261,23 @@ def create_visualization_data():
         runs_df.run_name.str.contains("|".join(baseline_run_names))]
     logger.info(f"{len(baseline_runs)} baseline runs")
     cross_task_data = runs_df[runs_df.run_name == 'CTBase'].copy()
+    logger.info(f"{len(cross_task_data.groupby(['name']).size())} unique cross task "
+                f"prompts")
+    logger.info("Getting Ranks")
     cross_task_data = get_rank(cross_task_data)
+    logger.info("Getting Prompt Lengths")
     cross_task_data = add_prompt_length(cross_task_data)
 
+    logger.info("Saving baselines")
     baseline_runs.to_csv(out_path.joinpath('baselines.csv'), index=False)
+
+    logger.info("Saving Crosstask data")
+    cross_task_data.to_csv(
+        PROJECT_ROOT.joinpath('data', 'cross_task.csv'),
+        index=False
+    )
+
+    logger.info("Saving latex tables")
     acc_table_path = PROJECT_ROOT.joinpath('data', 'cross_task_accuracy_table.text')
     with acc_table_path.open('w', encoding='utf-8') as f:
         f.write(make_latex_table(get_crosstask_data(
@@ -256,11 +291,7 @@ def create_visualization_data():
             'f1'
         )))
 
-    get_crosstask_data(cross_task_data.copy(), "accuracy").to_csv(
-        PROJECT_ROOT.joinpath('data', 'cross_task.csv'),
-        index=False
-    )
-
+    logger.info("Saving differences")
     diff_df = get_diff_crosstask_with_text(
         runs_df[runs_df.run_name.isin(['CTBase', 'CTNoText'])].copy()
     )
@@ -269,4 +300,5 @@ def create_visualization_data():
 
 
 if __name__ == '__main__':
+
     create_visualization_data()

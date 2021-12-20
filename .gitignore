@@ -138,3 +138,5 @@ data/*.csv
 data/cross_task_f1_table.text
 
 data/cross_task_accuracy_table.text
+
+data/predictions/
