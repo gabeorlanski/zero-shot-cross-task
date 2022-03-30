@@ -1,1 +1,1 @@
-My Course Project for CSCI-GA: 2590 Natural Language Processing
+Build the docker file, then use experiment.py to run an experiment
